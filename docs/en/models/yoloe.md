@@ -257,7 +257,6 @@ YOLOE supports both text-based and visual prompting. Using prompts is straightfo
 
         ```python
         import numpy as np
-
         from ultralytics import YOLOE
         from ultralytics.models.yolo.yoloe import YOLOEVPSegPredictor
 
@@ -300,7 +299,6 @@ YOLOE supports both text-based and visual prompting. Using prompts is straightfo
 
         ```python
         import numpy as np
-
         from ultralytics import YOLOE
         from ultralytics.models.yolo.yoloe import YOLOEVPSegPredictor
 
@@ -338,7 +336,6 @@ YOLOE supports both text-based and visual prompting. Using prompts is straightfo
 
         ```python
         import numpy as np
-
         from ultralytics import YOLOE
         from ultralytics.models.yolo.yoloe import YOLOEVPSegPredictor
 
@@ -899,7 +896,7 @@ The [Ultralytics documentation](https://docs.ultralytics.com/) provides further 
     **Pro Tip:**
     To maximize YOLOE's zero-shot accuracy, fine-tune from provided checkpoints rather than training from scratch. Use prompt words aligning with common training labels (see LVIS categories) to improve detection accuracy.
 
-## Citations and Acknowledgements
+## Citations and Acknowledgments
 
 If YOLOE has contributed to your research or project, please cite the original paper by **Ao Wang, Lihao Liu, Hui Chen, Zijia Lin, Jungong Han, and Guiguang Ding** from **Tsinghua University**:
 

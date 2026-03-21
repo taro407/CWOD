@@ -1,15 +1,16 @@
 import os
 import random
+from functools import partial
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from functools import partial
 
 from ultralytics_local import YOLO
-from ultralytics_local.models.yolo.detect.train import DetectionTrainer
+from ultralytics_local.data import build_dataloader, build_yolo_dataset
 from ultralytics_local.data.utils import check_det_dataset
-from ultralytics_local.data import build_yolo_dataset, build_dataloader
+from ultralytics_local.models.yolo.detect.train import DetectionTrainer
 
 
 # =========================
@@ -43,11 +44,9 @@ class ConvFeat(nn.Module):
 # =========================
 @torch.no_grad()
 def build_aux_feat_mask(img, conv_module):
+    """img: (B, 3, H, W) target-domain images return: (B, 1, H, W) normalized spatial mask.
     """
-    img: (B, 3, H, W) target-domain images
-    return: (B, 1, H, W) normalized spatial mask
-    """
-    B, C, H, W = img.shape
+    _B, _C, H, W = img.shape
     device = img.device
 
     # ---- FFT 显著性（仅图像先验）----
@@ -75,8 +74,7 @@ def build_aux_feat_mask(img, conv_module):
     def norm(x):
         b = x.shape[0]
         x = x.view(b, -1)
-        x = (x - x.min(1, keepdim=True).values) / \
-            (x.max(1, keepdim=True).values - x.min(1, keepdim=True).values + 1e-6)
+        x = (x - x.min(1, keepdim=True).values) / (x.max(1, keepdim=True).values - x.min(1, keepdim=True).values + 1e-6)
         return x.view(b, 1, H, W)
 
     saliency = norm(saliency)
@@ -92,14 +90,7 @@ def build_aux_feat_mask(img, conv_module):
 # 自定义 Trainer（严格无监督 target 域）
 # =========================
 class CustomTrainer(DetectionTrainer):
-    def __init__(
-        self,
-        target_domain_data_cfg,
-        hook_film=(16, 19, 22),
-        alpha_film=0.001,
-        *args,
-        **kwargs
-    ):
+    def __init__(self, target_domain_data_cfg, hook_film=(16, 19, 22), alpha_film=0.001, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.film_layers = list(hook_film)
@@ -160,9 +151,7 @@ class CustomTrainer(DetectionTrainer):
 
     def _register_hooks(self):
         for lid in self.film_layers:
-            self.model.model[lid].register_forward_hook(
-                self._make_film_hook()
-            )
+            self.model.model[lid].register_forward_hook(self._make_film_hook())
 
     def _make_film_hook(self):
         def hook(m, inp, out):
@@ -171,7 +160,7 @@ class CustomTrainer(DetectionTrainer):
             if out.dim() != 4 or self.aux_mask_full is None:
                 return out
 
-            B, C, H, W = out.shape
+            B, _C, H, W = out.shape
             mask = F.interpolate(
                 self.aux_mask_full[:B],
                 (H, W),

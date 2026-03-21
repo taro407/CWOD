@@ -1,12 +1,13 @@
+import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
 
 
 class MLCA(nn.Module):
     def __init__(self, in_size, local_size=5, gamma=2, b=1, local_weight=0.5):
-        super(MLCA, self).__init__()
+        super().__init__()
 
         # ECA 计算方法
         self.local_size = local_size
@@ -28,7 +29,7 @@ class MLCA(nn.Module):
         global_arv = self.global_arv_pool(local_arv)
 
         b, c, m, n = x.shape
-        b_local, c_local, m_local, n_local = local_arv.shape
+        _b_local, c_local, _m_local, _n_local = local_arv.shape
 
         # (b,c,local_size,local_size) -> (b,c,local_size*local_size)-> (b,local_size*local_size,c)-> (b,1,local_size*local_size*c)
         temp_local = local_arv.view(b, c_local, -1).transpose(-1, -2).reshape(b, 1, -1)
@@ -38,9 +39,11 @@ class MLCA(nn.Module):
         y_global = self.conv(temp_global)
 
         # (b,c,local_size,local_size) <- (b,c,local_size*local_size)<-(b,local_size*local_size,c) <- (b,1,local_size*local_size*c)
-        y_local_transpose = y_local.reshape(b, self.local_size * self.local_size, c).transpose(-1, -2).view(b, c,
-                                                                                                            self.local_size,
-                                                                                                            self.local_size)
+        y_local_transpose = (
+            y_local.reshape(b, self.local_size * self.local_size, c)
+            .transpose(-1, -2)
+            .view(b, c, self.local_size, self.local_size)
+        )
         # y_global_transpose = y_global.view(b, -1).transpose(-1, -2).unsqueeze(-1)
         y_global_transpose = y_global.view(b, -1).unsqueeze(-1).unsqueeze(-1)  # 代码修正
         # print(y_global_transpose.size())
@@ -66,6 +69,7 @@ def autopad(k, p=None, d=1):  # kernel, padding, dilation
 
 class Conv(nn.Module):
     """Standard convolution with args(ch_in, ch_out, kernel, stride, padding, groups, dilation, activation)."""
+
     default_act = nn.SiLU()  # default activation
 
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, d=1, act=True):
