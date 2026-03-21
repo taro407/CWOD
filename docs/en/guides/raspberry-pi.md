@@ -258,7 +258,6 @@ There are 2 methods of using the Raspberry Pi Camera to inference YOLO11 models.
                 ```python
                 import cv2
                 from picamera2 import Picamera2
-
                 from ultralytics import YOLO
 
                 # Initialize the Picamera2
@@ -371,7 +370,7 @@ There are a couple of best practices to follow in order to enable maximum perfor
 
 Congratulations on successfully setting up YOLO on your Raspberry Pi! For further learning and support, visit [Ultralytics YOLO11 Docs](../index.md) and [Kashmir World Foundation](https://www.kashmirworldfoundation.org/).
 
-## Acknowledgements and Citations
+## Acknowledgments and Citations
 
 This guide was initially created by Daan Eeltink for Kashmir World Foundation, an organization dedicated to the use of YOLO for the conservation of endangered species. We acknowledge their pioneering work and educational focus in the realm of object detection technologies.
 
@@ -459,7 +458,6 @@ There are two methods to set up a Raspberry Pi Camera for YOLO11 inference:
     ```python
     import cv2
     from picamera2 import Picamera2
-
     from ultralytics import YOLO
 
     picam2 = Picamera2()

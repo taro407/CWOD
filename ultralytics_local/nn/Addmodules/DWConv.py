@@ -1,9 +1,6 @@
-import torch
-import torch.nn as nn
-from functools import partial
 import math
-from timm.models.layers import trunc_normal_tf_
-from timm.models.helpers import named_apply
+
+import torch.nn as nn
 
 from ultralytics_local.nn.modules.conv import autopad
 

@@ -1,22 +1,18 @@
 ######################  SimAM   ####     start   by  AI&CV  ###############################
 import torch
 from torch import nn
-from torch.nn import init
-import torch.nn.functional as F
-
-from ultralytics_local.nn.modules.conv import Conv
 
 
 class SimAM(torch.nn.Module):
     def __init__(self, c1, e_lambda=1e-4):
-        super(SimAM, self).__init__()
+        super().__init__()
 
         self.activaton = nn.Sigmoid()
         self.e_lambda = e_lambda
 
     def __repr__(self):
-        s = self.__class__.__name__ + '('
-        s += ('lambda=%f)' % self.e_lambda)
+        s = self.__class__.__name__ + "("
+        s += f"lambda={self.e_lambda:f})"
         return s
 
     @staticmethod
@@ -24,7 +20,7 @@ class SimAM(torch.nn.Module):
         return "simam"
 
     def forward(self, x):
-        b, c, h, w = x.size()
+        _b, _c, h, w = x.size()
 
         n = w * h - 1
 

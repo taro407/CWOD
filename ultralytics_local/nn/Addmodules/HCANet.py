@@ -1,12 +1,11 @@
+import numbers
+import os
 import sys
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from pdb import set_trace as stx
-import numbers
-
 from einops import rearrange
-import os
 
 sys.path.append(os.getcwd())
 
@@ -18,16 +17,16 @@ sys.path.append(os.getcwd())
 
 
 def to_3d(x):
-    return rearrange(x, 'b c h w -> b (h w) c')
+    return rearrange(x, "b c h w -> b (h w) c")
 
 
 def to_4d(x, h, w):
-    return rearrange(x, 'b (h w) c -> b c h w', h=h, w=w)
+    return rearrange(x, "b (h w) c -> b c h w", h=h, w=w)
 
 
 class BiasFree_LayerNorm(nn.Module):
     def __init__(self, normalized_shape):
-        super(BiasFree_LayerNorm, self).__init__()
+        super().__init__()
         if isinstance(normalized_shape, numbers.Integral):
             normalized_shape = (normalized_shape,)
         normalized_shape = torch.Size(normalized_shape)
@@ -44,7 +43,7 @@ class BiasFree_LayerNorm(nn.Module):
 
 class WithBias_LayerNorm(nn.Module):
     def __init__(self, normalized_shape):
-        super(WithBias_LayerNorm, self).__init__()
+        super().__init__()
         if isinstance(normalized_shape, numbers.Integral):
             normalized_shape = (normalized_shape,)
         normalized_shape = torch.Size(normalized_shape)
@@ -63,8 +62,8 @@ class WithBias_LayerNorm(nn.Module):
 
 class LayerNorm(nn.Module):
     def __init__(self, dim, LayerNorm_type):
-        super(LayerNorm, self).__init__()
-        if LayerNorm_type == 'BiasFree':
+        super().__init__()
+        if LayerNorm_type == "BiasFree":
             self.body = BiasFree_LayerNorm(dim)
         else:
             self.body = WithBias_LayerNorm(dim)
@@ -78,20 +77,44 @@ class LayerNorm(nn.Module):
 ## Multi-Scale Feed-Forward Network (MSFN)
 class MSFN(nn.Module):
     def __init__(self, dim, ffn_expansion_factor=2.66, bias=False):
-        super(MSFN, self).__init__()
+        super().__init__()
 
         hidden_features = int(dim * ffn_expansion_factor)
 
         self.project_in = nn.Conv3d(dim, hidden_features * 3, kernel_size=(1, 1, 1), bias=bias)
 
-        self.dwconv1 = nn.Conv3d(hidden_features, hidden_features, kernel_size=(3, 3, 3), stride=1, dilation=1,
-                                 padding=1, groups=hidden_features, bias=bias)
+        self.dwconv1 = nn.Conv3d(
+            hidden_features,
+            hidden_features,
+            kernel_size=(3, 3, 3),
+            stride=1,
+            dilation=1,
+            padding=1,
+            groups=hidden_features,
+            bias=bias,
+        )
         # self.dwconv2 = nn.Conv3d(hidden_features, hidden_features, kernel_size=(3,3,3), stride=1, dilation=2, padding=2, groups=hidden_features, bias=bias)
         # self.dwconv3 = nn.Conv3d(hidden_features, hidden_features, kernel_size=(3,3,3), stride=1, dilation=3, padding=3, groups=hidden_features, bias=bias)
-        self.dwconv2 = nn.Conv2d(hidden_features, hidden_features, kernel_size=(3, 3), stride=1, dilation=2, padding=2,
-                                 groups=hidden_features, bias=bias)
-        self.dwconv3 = nn.Conv2d(hidden_features, hidden_features, kernel_size=(3, 3), stride=1, dilation=3, padding=3,
-                                 groups=hidden_features, bias=bias)
+        self.dwconv2 = nn.Conv2d(
+            hidden_features,
+            hidden_features,
+            kernel_size=(3, 3),
+            stride=1,
+            dilation=2,
+            padding=2,
+            groups=hidden_features,
+            bias=bias,
+        )
+        self.dwconv3 = nn.Conv2d(
+            hidden_features,
+            hidden_features,
+            kernel_size=(3, 3),
+            stride=1,
+            dilation=3,
+            padding=3,
+            groups=hidden_features,
+            bias=bias,
+        )
 
         self.project_out = nn.Conv3d(hidden_features, dim, kernel_size=(1, 1, 1), bias=bias)
 
@@ -116,21 +139,23 @@ class MSFN(nn.Module):
 ## Convolution and Attention Fusion Module  (CAFM)
 class CAFMAttention(nn.Module):
     def __init__(self, dim, num_heads, bias=False):
-        super(CAFMAttention, self).__init__()
+        super().__init__()
         self.num_heads = num_heads
         self.temperature = nn.Parameter(torch.ones(num_heads, 1, 1))
 
         self.qkv = nn.Conv3d(dim, dim * 3, kernel_size=(1, 1, 1), bias=bias)
-        self.qkv_dwconv = nn.Conv3d(dim * 3, dim * 3, kernel_size=(3, 3, 3), stride=1, padding=1, groups=dim * 3,
-                                    bias=bias)
+        self.qkv_dwconv = nn.Conv3d(
+            dim * 3, dim * 3, kernel_size=(3, 3, 3), stride=1, padding=1, groups=dim * 3, bias=bias
+        )
         self.project_out = nn.Conv3d(dim, dim, kernel_size=(1, 1, 1), bias=bias)
         self.fc = nn.Conv3d(3 * self.num_heads, 9, kernel_size=(1, 1, 1), bias=True)
 
-        self.dep_conv = nn.Conv3d(9 * dim // self.num_heads, dim, kernel_size=(3, 3, 3), bias=True,
-                                  groups=dim // self.num_heads, padding=1)
+        self.dep_conv = nn.Conv3d(
+            9 * dim // self.num_heads, dim, kernel_size=(3, 3, 3), bias=True, groups=dim // self.num_heads, padding=1
+        )
 
     def forward(self, x):
-        b, c, h, w = x.shape
+        _b, _c, h, w = x.shape
         x = x.unsqueeze(2)
         qkv = self.qkv_dwconv(self.qkv(x))
         qkv = qkv.squeeze(2)
@@ -148,9 +173,9 @@ class CAFMAttention(nn.Module):
         # global SA
         q, k, v = qkv.chunk(3, dim=1)
 
-        q = rearrange(q, 'b (head c) h w -> b head c (h w)', head=self.num_heads)
-        k = rearrange(k, 'b (head c) h w -> b head c (h w)', head=self.num_heads)
-        v = rearrange(v, 'b (head c) h w -> b head c (h w)', head=self.num_heads)
+        q = rearrange(q, "b (head c) h w -> b head c (h w)", head=self.num_heads)
+        k = rearrange(k, "b (head c) h w -> b head c (h w)", head=self.num_heads)
+        v = rearrange(v, "b (head c) h w -> b head c (h w)", head=self.num_heads)
 
         q = torch.nn.functional.normalize(q, dim=-1)
         k = torch.nn.functional.normalize(k, dim=-1)
@@ -158,9 +183,9 @@ class CAFMAttention(nn.Module):
         attn = (q @ k.transpose(-2, -1)) * self.temperature
         attn = attn.softmax(dim=-1)
 
-        out = (attn @ v)
+        out = attn @ v
 
-        out = rearrange(out, 'b head c (h w) -> b (head c) h w', head=self.num_heads, h=h, w=w)
+        out = rearrange(out, "b head c (h w) -> b (head c) h w", head=self.num_heads, h=h, w=w)
         out = out.unsqueeze(2)
         out = self.project_out(out)
         out = out.squeeze(2)
@@ -172,8 +197,8 @@ class CAFMAttention(nn.Module):
 ##########################################################################
 ## CAMixing Block
 class CAMixingTransformerBlock(nn.Module):
-    def __init__(self, dim, num_heads, ffn_expansion_factor=2.66, bias=False, LayerNorm_type='WithBias'):
-        super(CAMixingTransformerBlock, self).__init__()
+    def __init__(self, dim, num_heads, ffn_expansion_factor=2.66, bias=False, LayerNorm_type="WithBias"):
+        super().__init__()
 
         self.norm1 = LayerNorm(dim, LayerNorm_type)
         self.attn = CAFMAttention(dim, num_heads, bias)
@@ -185,4 +210,3 @@ class CAMixingTransformerBlock(nn.Module):
         x = x + self.ffn(self.norm2(x))
 
         return x
-
