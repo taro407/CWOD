@@ -5,14 +5,14 @@ from pathlib import Path
 
 import pytest
 import torch
-
-from tests import CUDA_DEVICE_COUNT, CUDA_IS_AVAILABLE, MODEL, SOURCE
 from ultralytics import YOLO
 from ultralytics.cfg import TASK2DATA, TASK2MODEL, TASKS
 from ultralytics.utils import ASSETS, IS_JETSON, WEIGHTS_DIR
 from ultralytics.utils.autodevice import GPUInfo
 from ultralytics.utils.checks import check_amp
 from ultralytics.utils.torch_utils import TORCH_1_13
+
+from tests import CUDA_DEVICE_COUNT, CUDA_IS_AVAILABLE, MODEL, SOURCE
 
 # Try to find idle devices if CUDA is available
 DEVICES = []

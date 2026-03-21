@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-__all__ = ['C3k2_MSBlcok']
+__all__ = ["C3k2_MSBlcok"]
 
 
 def autopad(k, p=None, d=1):  # kernel, padding, dilation
@@ -15,6 +15,7 @@ def autopad(k, p=None, d=1):  # kernel, padding, dilation
 
 class Conv(nn.Module):
     """Standard convolution with args(ch_in, ch_out, kernel, stride, padding, groups, dilation, activation)."""
+
     default_act = nn.SiLU()  # default activation
 
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, d=1, act=True):
@@ -46,8 +47,9 @@ class MSBlockLayer(nn.Module):
 
 
 class MSBlock(nn.Module):
-    def __init__(self, inc, ouc, kernel_sizes, in_expand_ratio=3., mid_expand_ratio=2., layers_num=3,
-                 in_down_ratio=2.) -> None:
+    def __init__(
+        self, inc, ouc, kernel_sizes, in_expand_ratio=3.0, mid_expand_ratio=2.0, layers_num=3, in_down_ratio=2.0
+    ) -> None:
         super().__init__()
 
         in_channel = int(inc * in_expand_ratio // in_down_ratio)
@@ -71,7 +73,7 @@ class MSBlock(nn.Module):
         out = self.in_conv(x)
         channels = []
         for i, mid_conv in enumerate(self.mid_convs):
-            channel = out[:, i * self.mid_channel:(i + 1) * self.mid_channel, ...]
+            channel = out[:, i * self.mid_channel : (i + 1) * self.mid_channel, ...]
             if i >= 1:
                 channel = channel + channels[i - 1]
             channel = mid_conv(channel)
@@ -94,6 +96,7 @@ def autopad(k, p=None, d=1):  # kernel, padding, dilation
 
 class Conv(nn.Module):
     """Standard convolution with args(ch_in, ch_out, kernel, stride, padding, groups, dilation, activation)."""
+
     default_act = nn.SiLU()  # default activation
 
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, d=1, act=True):

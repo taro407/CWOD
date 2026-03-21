@@ -1,11 +1,8 @@
-from torch import nn
 import torch
-from torch.nn import init
-from ultralytics_local.nn.modules.conv import Conv
+from torch import nn
 
 
 class PolarizedSelfAttention(nn.Module):
-
     def __init__(self, c1, channel=512):
         super().__init__()
         self.ch_wv = nn.Conv2d(channel, channel // 2, kernel_size=(1, 1))
@@ -29,9 +26,11 @@ class PolarizedSelfAttention(nn.Module):
         channel_wq = channel_wq.reshape(b, -1, 1)  # bs,h*w,1
         channel_wq = self.softmax_channel(channel_wq)
         channel_wz = torch.matmul(channel_wv, channel_wq).unsqueeze(-1)  # bs,c//2,1,1
-        channel_weight = self.sigmoid(self.ln(self.ch_wz(channel_wz).reshape(b, c, 1).permute(0, 2, 1))).permute(0, 2,
-                                                                                                                 1).reshape(
-            b, c, 1, 1)  # bs,c,1,1
+        channel_weight = (
+            self.sigmoid(self.ln(self.ch_wz(channel_wz).reshape(b, c, 1).permute(0, 2, 1)))
+            .permute(0, 2, 1)
+            .reshape(b, c, 1, 1)
+        )  # bs,c,1,1
         channel_out = channel_weight * x
 
         # Spatial-only Self-Attention

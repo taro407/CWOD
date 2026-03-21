@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from einops import rearrange
 
-__all__ = ['LAE']
+__all__ = ["LAE"]
 
 
 def autopad(k, p=None, d=1):  # kernel, padding, dilation
@@ -16,6 +16,7 @@ def autopad(k, p=None, d=1):  # kernel, padding, dilation
 
 class Conv(nn.Module):
     """Standard convolution with args(ch_in, ch_out, kernel, stride, padding, groups, dilation, activation)."""
+
     default_act = nn.SiLU()  # default activation
 
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, d=1, act=True):
@@ -40,20 +41,17 @@ class LAE(nn.Module):
         super().__init__()
 
         self.softmax = nn.Softmax(dim=-1)
-        self.attention = nn.Sequential(
-            nn.AvgPool2d(kernel_size=3, stride=1, padding=1),
-            Conv(ch, ch, k=1)
-        )
+        self.attention = nn.Sequential(nn.AvgPool2d(kernel_size=3, stride=1, padding=1), Conv(ch, ch, k=1))
 
         self.ds_conv = Conv(ch, ch * 4, k=3, s=2, g=(ch // group))
 
     def forward(self, x):
         # bs, ch, 2*h, 2*w => bs, ch, h, w, 4
-        att = rearrange(self.attention(x), 'bs ch (s1 h) (s2 w) -> bs ch h w (s1 s2)', s1=2, s2=2)
+        att = rearrange(self.attention(x), "bs ch (s1 h) (s2 w) -> bs ch h w (s1 s2)", s1=2, s2=2)
         att = self.softmax(att)
 
         # bs, 4 * ch, h, w => bs, ch, h, w, 4
-        x = rearrange(self.ds_conv(x), 'bs (s ch) h w -> bs ch h w s', s=4)
+        x = rearrange(self.ds_conv(x), "bs (s ch) h w -> bs ch h w s", s=4)
         x = torch.sum(x * att, dim=-1)
         return x
 

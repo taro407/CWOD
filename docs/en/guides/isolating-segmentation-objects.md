@@ -254,7 +254,6 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-
 from ultralytics import YOLO
 
 m = YOLO("yolo11n-seg.pt")  # (4)!
