@@ -48,7 +48,6 @@ For continuous tracking across video frames, you can use the `persist=True` para
 
         ```python
         import cv2
-
         from ultralytics import YOLO
 
         # Load the YOLO model
