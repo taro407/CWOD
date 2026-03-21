@@ -1,14 +1,9 @@
-import math
-from functools import partial
-from typing import Any, Callable, List, Optional, Tuple
+import torch
+import torch.nn.functional as F
+from torch import nn
 
 from ultralytics_local.nn.modules.conv import Conv
-
 from ultralytics_local.utils.torch_utils import fuse_conv_and_bn
-
-import torch
-from torch import nn, Tensor
-import torch.nn.functional as F
 
 
 class RepVGGDW(torch.nn.Module):
@@ -142,8 +137,9 @@ class DilatedBottleneck(nn.Module):
 class G2L_CRM(nn.Module):
     """Faster Implementation of CSP Bottleneck with 2 convolutions."""
 
-    def __init__(self, c1, c2, n=1, shortcut=False, use_dilated=False, dilation=[1, 2, 3], block_k=3, fuse="sum", g=1,
-                 e=0.5):
+    def __init__(
+        self, c1, c2, n=1, shortcut=False, use_dilated=False, dilation=[1, 2, 3], block_k=3, fuse="sum", g=1, e=0.5
+    ):
         """Initialize CSP bottleneck layer with two convolutions with arguments ch_in, ch_out, number, shortcut, groups,
         expansion.
         """
@@ -152,24 +148,12 @@ class G2L_CRM(nn.Module):
         self.cv1 = Conv(c1, 2 * self.c, 1, 1)
         self.cv2 = Conv((2 + n) * self.c, c2, 1)  # optional act=FReLU(c2)
         if use_dilated:
-            self.m = nn.ModuleList(DilatedBottleneck(
-                self.c,
-                self.c,
-                shortcut,
-                dilation,
-                block_k,
-                fuse,
-                g,
-                k=((3, 3), (3, 3)),
-                e=1.0) for _ in range(n)
-                                   )
+            self.m = nn.ModuleList(
+                DilatedBottleneck(self.c, self.c, shortcut, dilation, block_k, fuse, g, k=((3, 3), (3, 3)), e=1.0)
+                for _ in range(n)
+            )
         else:
-            self.m = nn.ModuleList(CIB(
-                self.c,
-                self.c,
-                shortcut,
-                e=1.0) for _ in range(n)
-                                   )
+            self.m = nn.ModuleList(CIB(self.c, self.c, shortcut, e=1.0) for _ in range(n))
 
     def forward(self, x):
         """Forward pass through C2f layer."""

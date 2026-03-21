@@ -5,7 +5,7 @@ import torch.nn as nn
 
 class TridentBlock(nn.Module):
     def __init__(self, c1, c2, stride=1, c=False, e=0.5, padding=[1, 2, 3], dilate=[1, 2, 3], bias=False):
-        super(TridentBlock, self).__init__()
+        super().__init__()
         self.stride = stride
         self.c = c
         c_ = int(c2 * e)
@@ -36,9 +36,14 @@ class TridentBlock(nn.Module):
         out = self.bn1(out)
         out = self.act(out)
 
-        out = nn.functional.conv2d(out, self.share_weightconv2, bias=self.bias, stride=self.stride,
-                                   padding=self.padding[0],
-                                   dilation=self.dilate[0])
+        out = nn.functional.conv2d(
+            out,
+            self.share_weightconv2,
+            bias=self.bias,
+            stride=self.stride,
+            padding=self.padding[0],
+            dilation=self.dilate[0],
+        )
         out = self.bn2(out)
         out += residual
         out = self.act(out)
@@ -51,9 +56,14 @@ class TridentBlock(nn.Module):
         out = self.bn1(out)
         out = self.act(out)
 
-        out = nn.functional.conv2d(out, self.share_weightconv2, bias=self.bias, stride=self.stride,
-                                   padding=self.padding[1],
-                                   dilation=self.dilate[1])
+        out = nn.functional.conv2d(
+            out,
+            self.share_weightconv2,
+            bias=self.bias,
+            stride=self.stride,
+            padding=self.padding[1],
+            dilation=self.dilate[1],
+        )
         out = self.bn2(out)
         out += residual
         out = self.act(out)
@@ -66,9 +76,14 @@ class TridentBlock(nn.Module):
         out = self.bn1(out)
         out = self.act(out)
 
-        out = nn.functional.conv2d(out, self.share_weightconv2, bias=self.bias, stride=self.stride,
-                                   padding=self.padding[2],
-                                   dilation=self.dilate[2])
+        out = nn.functional.conv2d(
+            out,
+            self.share_weightconv2,
+            bias=self.bias,
+            stride=self.stride,
+            padding=self.padding[2],
+            dilation=self.dilate[2],
+        )
         out = self.bn2(out)
         out += residual
         out = self.act(out)
@@ -96,7 +111,7 @@ class TridentBlock(nn.Module):
 
 class RFEM(nn.Module):
     def __init__(self, c1, c2, n=1, e=0.5, stride=1):
-        super(RFEM, self).__init__()
+        super().__init__()
         c = True
         layers = []
         layers.append(TridentBlock(c1, c2, stride=stride, c=c, e=e))
@@ -117,7 +132,7 @@ class RFEM(nn.Module):
 
 class Residual(nn.Module):
     def __init__(self, fn):
-        super(Residual, self).__init__()
+        super().__init__()
         self.fn = fn
 
     def forward(self, x):
@@ -126,30 +141,33 @@ class Residual(nn.Module):
 
 class ConvMixer(nn.Module):
     def __init__(self, c1, c2, depth, kernel_size=3, patch_size=4, reduction=16):
-        super(ConvMixer, self).__init__()
+        super().__init__()
         if c1 != c2:
             c2 = c1
         self.DConvN = nn.Sequential(
             nn.Conv2d(c1, c2, kernel_size=patch_size, stride=patch_size),
             nn.GELU(),
             nn.BatchNorm2d(c2),
-            *[nn.Sequential(
-                Residual(nn.Sequential(
-                    nn.Conv2d(c2, c2, kernel_size, groups=c2, padding=1),
+            *[
+                nn.Sequential(
+                    Residual(
+                        nn.Sequential(
+                            nn.Conv2d(c2, c2, kernel_size, groups=c2, padding=1), nn.GELU(), nn.BatchNorm2d(c2)
+                        )
+                    ),
+                    nn.Conv2d(c2, c1, kernel_size=1),
                     nn.GELU(),
-                    nn.BatchNorm2d(c2)
-                )),
-                nn.Conv2d(c2, c1, kernel_size=1),
-                nn.GELU(),
-                nn.BatchNorm2d(c2)
-            ) for i in range(depth)]
+                    nn.BatchNorm2d(c2),
+                )
+                for i in range(depth)
+            ],
         )
         self.avg_pool = torch.nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Sequential(
             nn.Linear(c2, c2 // reduction, bias=False),
             nn.ReLU(inplace=True),
             nn.Linear(c2 // reduction, c2, bias=False),
-            nn.Sigmoid()
+            nn.Sigmoid(),
         )
 
     def forward(self, x):
@@ -163,30 +181,35 @@ class ConvMixer(nn.Module):
 
 class SEAM(nn.Module):
     def __init__(self, c1, c2, n, reduction=16):
-        super(SEAM, self).__init__()
+        super().__init__()
         if c1 != c2:
             c2 = c1
         self.DCovN = nn.Sequential(
             # nn.Conv2d(c1, c2, kernel_size=3, stride=1, padding=1, groups=c1),
             # nn.GELU(),
             # nn.BatchNorm2d(c2),
-            *[nn.Sequential(
-                Residual(nn.Sequential(
-                    nn.Conv2d(in_channels=c2, out_channels=c2, kernel_size=3, stride=1, padding=1, groups=c2),
+            *[
+                nn.Sequential(
+                    Residual(
+                        nn.Sequential(
+                            nn.Conv2d(in_channels=c2, out_channels=c2, kernel_size=3, stride=1, padding=1, groups=c2),
+                            nn.GELU(),
+                            nn.BatchNorm2d(c2),
+                        )
+                    ),
+                    nn.Conv2d(in_channels=c2, out_channels=c2, kernel_size=1, stride=1, padding=0, groups=1),
                     nn.GELU(),
-                    nn.BatchNorm2d(c2)
-                )),
-                nn.Conv2d(in_channels=c2, out_channels=c2, kernel_size=1, stride=1, padding=0, groups=1),
-                nn.GELU(),
-                nn.BatchNorm2d(c2)
-            ) for i in range(n)]
+                    nn.BatchNorm2d(c2),
+                )
+                for i in range(n)
+            ]
         )
         self.avg_pool = torch.nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Sequential(
             nn.Linear(c2, c2 // reduction, bias=False),
             nn.ReLU(inplace=True),
             nn.Linear(c2 // reduction, c2, bias=False),
-            nn.Sigmoid()
+            nn.Sigmoid(),
         )
 
         self._initialize_weights()
@@ -211,7 +234,7 @@ class SEAM(nn.Module):
 
     def initialize_layer(self, layer):
         if isinstance(layer, (nn.Conv2d, nn.Linear)):
-            torch.nn.init.normal_(layer.weight, mean=0., std=0.001)
+            torch.nn.init.normal_(layer.weight, mean=0.0, std=0.001)
             if layer.bias is not None:
                 torch.nn.init.constant_(layer.bias, 0)
 
@@ -221,23 +244,30 @@ def DcovN(c1, c2, depth, kernel_size=3, patch_size=3):
         nn.Conv2d(c1, c2, kernel_size=patch_size, stride=patch_size),
         nn.SiLU(),
         nn.BatchNorm2d(c2),
-        *[nn.Sequential(
-            Residual(nn.Sequential(
-                nn.Conv2d(in_channels=c2, out_channels=c2, kernel_size=kernel_size, stride=1, padding=1, groups=c2),
+        *[
+            nn.Sequential(
+                Residual(
+                    nn.Sequential(
+                        nn.Conv2d(
+                            in_channels=c2, out_channels=c2, kernel_size=kernel_size, stride=1, padding=1, groups=c2
+                        ),
+                        nn.SiLU(),
+                        nn.BatchNorm2d(c2),
+                    )
+                ),
+                nn.Conv2d(in_channels=c2, out_channels=c2, kernel_size=1, stride=1, padding=0, groups=1),
                 nn.SiLU(),
-                nn.BatchNorm2d(c2)
-            )),
-            nn.Conv2d(in_channels=c2, out_channels=c2, kernel_size=1, stride=1, padding=0, groups=1),
-            nn.SiLU(),
-            nn.BatchNorm2d(c2)
-        ) for i in range(depth)]
+                nn.BatchNorm2d(c2),
+            )
+            for i in range(depth)
+        ],
     )
     return dcovn
 
 
 class MultiSEAM(nn.Module):
     def __init__(self, c1, c2, depth, kernel_size=3, patch_size=[3, 5, 7], reduction=16):
-        super(MultiSEAM, self).__init__()
+        super().__init__()
         if c1 != c2:
             c2 = c1
         self.DCovN0 = DcovN(c1, c2, depth, kernel_size=kernel_size, patch_size=patch_size[0])
@@ -248,7 +278,7 @@ class MultiSEAM(nn.Module):
             nn.Linear(c2, c2 // reduction, bias=False),
             nn.ReLU(inplace=True),
             nn.Linear(c2 // reduction, c2, bias=False),
-            nn.Sigmoid()
+            nn.Sigmoid(),
         )
 
     def forward(self, x):
