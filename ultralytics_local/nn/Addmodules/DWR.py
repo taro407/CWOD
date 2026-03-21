@@ -1,8 +1,8 @@
 import torch
 from torch import nn
 
-from ultralytics_local.nn.modules.conv import Conv, autopad
-from ultralytics_local.nn.modules.block import Bottleneck, C2f, C3k
+from ultralytics_local.nn.modules.block import C2f, C3k
+from ultralytics_local.nn.modules.conv import Conv
 
 
 class DWR(nn.Module):
@@ -31,6 +31,4 @@ class C3k2_DWR(C2f):
     def __init__(self, c1, c2, n=1, c3k=False, e=0.5, g=1, shortcut=True):
         """Initializes the C3k2 module, a faster CSP Bottleneck with 2 convolutions and optional C3k blocks."""
         super().__init__(c1, c2, n, shortcut, g, e)
-        self.m = nn.ModuleList(
-            C3k(self.c, self.c, 2, shortcut, g) if c3k else DWR(self.c) for _ in range(n)
-        )
+        self.m = nn.ModuleList(C3k(self.c, self.c, 2, shortcut, g) if c3k else DWR(self.c) for _ in range(n))

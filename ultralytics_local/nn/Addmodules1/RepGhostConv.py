@@ -23,8 +23,9 @@ class ConvBNAct(nn.Module):
 # ==========================================================
 class RepGhostConv(nn.Module):
     """
-    Reference:
-    "RepGhost: Integrating Re-parameterization and Ghost Convolution for Lightweight CNNs"
+
+    References:
+    "RepGhost: Integrating Re-parameterization and Ghost Convolution for Lightweight CNNs".
     """
 
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, reparam=False):
@@ -36,7 +37,7 @@ class RepGhostConv(nn.Module):
         # 主分支: 1×1 conv + depthwise conv
         self.primary_conv = nn.Sequential(
             ConvBNAct(in_channels, out_channels, 1, 1),
-            ConvBNAct(out_channels, out_channels, kernel_size, stride, groups=out_channels)
+            ConvBNAct(out_channels, out_channels, kernel_size, stride, groups=out_channels),
         )
 
         # 旁支: identity + BN
@@ -61,16 +62,14 @@ class RepGhostConv(nn.Module):
     # 🔁 重参数化函数
     # ==========================================================
     def fuse_reparam(self):
-        """
-        将训练阶段的多分支结构融合为单一卷积。
-        """
+        """将训练阶段的多分支结构融合为单一卷积。."""
         if self.shortcut is None:
             identity_w = torch.zeros_like(self.primary_conv[1].conv.weight)
             identity_b = torch.zeros(self.primary_conv[1].bn.num_features, device=identity_w.device)
         else:
             identity_w, identity_b = self._fuse_bn_tensor(self.shortcut)
 
-        conv1_w, conv1_b = self._fuse_bn_tensor(self.primary_conv[0].bn, self.primary_conv[0].conv)
+        _conv1_w, conv1_b = self._fuse_bn_tensor(self.primary_conv[0].bn, self.primary_conv[0].conv)
         conv2_w, conv2_b = self._fuse_bn_tensor(self.primary_conv[1].bn, self.primary_conv[1].conv)
 
         # 合并两层卷积 (1x1 + DWConv)
@@ -91,16 +90,16 @@ class RepGhostConv(nn.Module):
         del self.primary_conv, self.shortcut  # 删除旧结构以节省显存
 
     def _fuse_bn_tensor(self, bn, conv=None):
-        """BN 与 Conv 融合为单一卷积核"""
+        """BN 与 Conv 融合为单一卷积核."""
         if conv is None:
             # identity 分支
             w = torch.zeros(self.out_channels, self.in_channels, 3, 3, device=bn.weight.device)
             for i in range(self.in_channels):
                 w[i, i, 1, 1] = 1.0
-            b = torch.zeros_like(bn.bias)
+            torch.zeros_like(bn.bias)
         else:
             w = conv.weight
-            b = torch.zeros(bn.weight.shape, device=w.device)
+            torch.zeros(bn.weight.shape, device=w.device)
 
         # BN参数融合
         gamma = bn.weight
