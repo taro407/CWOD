@@ -108,7 +108,6 @@ In this example, we demonstrate how to use a custom search space for hyperparame
 
     ```python
     from ray import tune
-
     from ultralytics import YOLO
 
     # Define a YOLO model
@@ -265,7 +264,6 @@ To integrate Weights & Biases (W&B) with your Ultralytics YOLO11 tuning process:
 
     ```python
     import wandb
-
     from ultralytics import YOLO
 
     wandb.init(project="YOLO-Tuning", entity="your-entity")
@@ -295,7 +293,6 @@ To define a custom search space for your YOLO11 hyperparameter tuning with Ray T
 
 ```python
 from ray import tune
-
 from ultralytics import YOLO
 
 model = YOLO("yolo11n.pt")

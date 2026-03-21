@@ -10,8 +10,8 @@ except:
 
 class Down_wt(nn.Module):
     def __init__(self, in_ch, out_ch):
-        super(Down_wt, self).__init__()
-        self.wt = DWTForward(J=1, mode='zero', wave='haar')
+        super().__init__()
+        self.wt = DWTForward(J=1, mode="zero", wave="haar")
         self.conv_bn_relu = nn.Sequential(
             nn.Conv2d(in_ch * 4, out_ch, kernel_size=1, stride=1),
             nn.BatchNorm2d(out_ch),

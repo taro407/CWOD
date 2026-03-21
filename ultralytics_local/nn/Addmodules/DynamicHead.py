@@ -1,12 +1,14 @@
 import copy
 import math
-from mmcv.ops import ModulatedDeformConv2d
-from ultralytics_local.utils.tal import dist2bbox, make_anchors
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from mmcv.ops import ModulatedDeformConv2d
 
-__all__ = ['DynamicHead']
+from ultralytics_local.utils.tal import dist2bbox, make_anchors
+
+__all__ = ["DynamicHead"]
 
 
 def _make_divisible(v, divisor, min_value=None):
@@ -39,8 +41,16 @@ class h_sigmoid(nn.Module):
 
 class DYReLU(nn.Module):
     def __init__(
-        self, inp, oup, reduction=4, lambda_a=1.0, K2=True, use_bias=True, use_spatial=False,
-        init_a=[1.0, 0.0], init_b=[0.0, 0.0]
+        self,
+        inp,
+        oup,
+        reduction=4,
+        lambda_a=1.0,
+        K2=True,
+        use_bias=True,
+        use_spatial=False,
+        init_a=[1.0, 0.0],
+        init_b=[0.0, 0.0],
     ):
         super().__init__()
         self.oup = oup
@@ -57,15 +67,16 @@ class DYReLU(nn.Module):
 
         squeeze = inp // reduction if reduction == 4 else _make_divisible(inp // reduction, 4)
         self.fc = nn.Sequential(
-            nn.Linear(inp, squeeze),
-            nn.ReLU(inplace=True),
-            nn.Linear(squeeze, oup * self.exp),
-            h_sigmoid()
+            nn.Linear(inp, squeeze), nn.ReLU(inplace=True), nn.Linear(squeeze, oup * self.exp), h_sigmoid()
         )
-        self.spa = nn.Sequential(
-            nn.Conv2d(inp, 1, kernel_size=1),
-            nn.BatchNorm2d(1),
-        ) if use_spatial else None
+        self.spa = (
+            nn.Sequential(
+                nn.Conv2d(inp, 1, kernel_size=1),
+                nn.BatchNorm2d(1),
+            )
+            if use_spatial
+            else None
+        )
 
     def forward(self, x):
         if isinstance(x, list):
@@ -134,7 +145,7 @@ class DyConvLevel(nn.Module):
         self.offset = nn.Conv2d(c_cur, 27, kernel_size=3, stride=1, padding=1)
 
     def forward(self, feat_cur, feat_prev=None, feat_next=None):
-        B, C, H, W = feat_cur.shape
+        _B, _C, H, W = feat_cur.shape
         offset_mask = self.offset(feat_cur)
         offset = offset_mask[:, :18, :, :]
         mask = offset_mask[:, 18:, :, :].sigmoid()
@@ -144,12 +155,12 @@ class DyConvLevel(nn.Module):
         if self.conv_down is not None and feat_prev is not None:
             cand.append(self.conv_down(feat_prev, **conv_args))
         if self.conv_up is not None and feat_next is not None:
-            up_in = F.interpolate(feat_next, size=(H, W), mode='nearest')
+            up_in = F.interpolate(feat_next, size=(H, W), mode="nearest")
             cand.append(self.conv_up(up_in, **conv_args))
 
         attns = [self.attn(f) for f in cand]
-        stack = torch.stack(cand)                       # [K,B,C,H,W]
-        attn_stack = h_sigmoid()(torch.stack(attns))    # [K,B,1,1,1]
+        stack = torch.stack(cand)  # [K,B,C,H,W]
+        attn_stack = h_sigmoid()(torch.stack(attns))  # [K,B,1,1,1]
         fused = torch.mean(stack * attn_stack, dim=0)
         return self.act(fused)
 
@@ -187,7 +198,7 @@ class DFL(nn.Module):
         self.c1 = c1
 
     def forward(self, x):
-        b, c, a = x.shape
+        b, _c, a = x.shape
         return self.conv(x.view(b, 4, self.c1, a).transpose(2, 1).softmax(1)).view(b, 4, a)
 
 
@@ -197,11 +208,7 @@ class DWConv(Conv):
 
 
 class DynamicHead(nn.Module):
-    """
-    轻量 DyHead 检测头（P3~P5）：
-      - 各层保留自身通道数
-      - 首次前向自动推断 stride=[8,16,32] 并只初始化一次 bias
-      - 兼容 Ultralytics 的 m.strides 迁移逻辑
+    """轻量 DyHead 检测头（P3~P5）： - 各层保留自身通道数 - 首次前向自动推断 stride=[8,16,32] 并只初始化一次 bias - 兼容 Ultralytics 的 m.strides 迁移逻辑.
     """
 
     # === 类属性：Ultralytics 在 ._apply() 里会访问，必须先有 ===
@@ -210,8 +217,8 @@ class DynamicHead(nn.Module):
     end2end = False
     max_det = 300
     shape = None
-    anchors = torch.empty(0)   # <- 类属性存在
-    strides = torch.empty(0)   # <- 类属性存在
+    anchors = torch.empty(0)  # <- 类属性存在
+    strides = torch.empty(0)  # <- 类属性存在
 
     def __init__(self, nc=80, ch=()):
         super().__init__()
@@ -234,9 +241,9 @@ class DynamicHead(nn.Module):
         self.no = nc + self.reg_max * 4
 
         # === Instance buffers ===
-        self.register_buffer('stride', torch.zeros(self.nl))   # 每层标量步长 8/16/32
-        self.register_buffer('strides', torch.empty(0))        # 与 anchors 搭配使用的 per-location strides
-        self.register_buffer('anchors', torch.empty(0))
+        self.register_buffer("stride", torch.zeros(self.nl))  # 每层标量步长 8/16/32
+        self.register_buffer("strides", torch.empty(0))  # 与 anchors 搭配使用的 per-location strides
+        self.register_buffer("anchors", torch.empty(0))
         self._bias_inited = False
 
         self.cv2 = nn.ModuleList()
@@ -245,11 +252,13 @@ class DynamicHead(nn.Module):
             c2 = max(16, c // 4, self.reg_max * 4)
             c3 = max(c, min(self.nc, 100))
             self.cv2.append(nn.Sequential(Conv(c, c2, 3), Conv(c2, c2, 3), nn.Conv2d(c2, 4 * self.reg_max, 1)))
-            self.cv3.append(nn.Sequential(
-                nn.Sequential(DWConv(c, c, 3), Conv(c, c3, 1)),
-                nn.Sequential(DWConv(c3, c3, 3), Conv(c3, c3, 1)),
-                nn.Conv2d(c3, self.nc, 1),
-            ))
+            self.cv3.append(
+                nn.Sequential(
+                    nn.Sequential(DWConv(c, c, 3), Conv(c, c3, 1)),
+                    nn.Sequential(DWConv(c3, c3, 3), Conv(c3, c3, 1)),
+                    nn.Conv2d(c3, self.nc, 1),
+                )
+            )
         self.dfl = DFL(self.reg_max) if self.reg_max > 1 else nn.Identity()
 
         if self.end2end:
@@ -270,8 +279,9 @@ class DynamicHead(nn.Module):
             Hs = [t.shape[-2] for t in outs]  # 高从大到小对应 P3->P5
             order = torch.tensor(Hs, device=outs[0].device).argsort(descending=True)
             base = 8
-            guessed = torch.tensor([base * (2 ** i) for i in range(len(outs))],
-                                   device=outs[0].device, dtype=torch.float32)
+            guessed = torch.tensor(
+                [base * (2**i) for i in range(len(outs))], device=outs[0].device, dtype=torch.float32
+            )
             self.stride[order] = guessed
             if not self._bias_inited:
                 self.bias_init()
@@ -308,14 +318,14 @@ class DynamicHead(nn.Module):
         # anchors/strides（注意：这里写入的是 per-location 的张量，保存在 buffers 里，兼容 .to()）
         if self.dynamic or self.shape != shape:
             anchors, strides = make_anchors(x, self.stride, 0.5)
-            self.anchors = anchors.transpose(0, 1)   # [2, A] or [nl, ...] -> 按 Ultralytics 用法
+            self.anchors = anchors.transpose(0, 1)  # [2, A] or [nl, ...] -> 按 Ultralytics 用法
             self.strides = strides.transpose(0, 1)
             self.shape = shape
 
         # split box/cls
         if self.export and self.format in {"saved_model", "pb", "tflite", "edgetpu", "tfjs"}:
             box = x_cat[:, : self.reg_max * 4]
-            cls = x_cat[:, self.reg_max * 4:]
+            cls = x_cat[:, self.reg_max * 4 :]
         else:
             box, cls = x_cat.split((self.reg_max * 4, self.nc), 1)
 
@@ -355,9 +365,7 @@ class DynamicHead(nn.Module):
 
 
 if __name__ == "__main__":
-    imgs = [torch.randn(1, 64, 80, 80),
-            torch.randn(1, 128, 40, 40),
-            torch.randn(1, 256, 20, 20)]
+    imgs = [torch.randn(1, 64, 80, 80), torch.randn(1, 128, 40, 40), torch.randn(1, 256, 20, 20)]
     head = DynamicHead(nc=1, ch=(64, 128, 256))
     head.train()
     outs = head(imgs)

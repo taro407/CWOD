@@ -1,14 +1,14 @@
+import torch
 import torch.nn as nn
 from timm.models.layers import DropPath
-import torch
 
-__all__ = ['FocalModulation']
+__all__ = ["FocalModulation"]
 
 
 class Mlp(nn.Module):
-    """ Multilayer perceptron."""
+    """Multilayer perceptron."""
 
-    def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.):
+    def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.0):
         super().__init__()
         out_features = out_features or in_features
         hidden_features = hidden_features or in_features
@@ -27,8 +27,17 @@ class Mlp(nn.Module):
 
 
 class FocalModulation(nn.Module):
-    def __init__(self, dim, focal_window=3, focal_level=2, focal_factor=2, bias=True, proj_drop=0.,
-                 use_postln_in_modulation=False, normalize_modulator=False):
+    def __init__(
+        self,
+        dim,
+        focal_window=3,
+        focal_level=2,
+        focal_factor=2,
+        bias=True,
+        proj_drop=0.0,
+        use_postln_in_modulation=False,
+        normalize_modulator=False,
+    ):
         super().__init__()
 
         self.dim = dim
@@ -51,8 +60,9 @@ class FocalModulation(nn.Module):
             kernel_size = self.focal_factor * k + self.focal_window
             self.focal_layers.append(
                 nn.Sequential(
-                    nn.Conv2d(dim, dim, kernel_size=kernel_size, stride=1,
-                              groups=dim, padding=kernel_size // 2, bias=False),
+                    nn.Conv2d(
+                        dim, dim, kernel_size=kernel_size, stride=1, groups=dim, padding=kernel_size // 2, bias=False
+                    ),
                     nn.GELU(),
                 )
             )
@@ -61,7 +71,7 @@ class FocalModulation(nn.Module):
     def forward(self, x):
         """
         Args:
-            x: input features with shape of (B, H, W, C)
+            x: input features with shape of (B, H, W, C).
         """
         C = x.shape[1]
 
@@ -69,13 +79,13 @@ class FocalModulation(nn.Module):
         x = self.f_linear(x).contiguous()
         q, ctx, gates = torch.split(x, (C, C, self.focal_level + 1), 1)
 
-        # context aggreation
+        # context aggregation
         ctx_all = 0.0
         for l in range(self.focal_level):
             ctx = self.focal_layers[l](ctx)
-            ctx_all = ctx_all + ctx * gates[:, l:l + 1]
+            ctx_all = ctx_all + ctx * gates[:, l : l + 1]
         ctx_global = self.act(ctx.mean(2, keepdim=True).mean(3, keepdim=True))
-        ctx_all = ctx_all + ctx_global * gates[:, self.focal_level:]
+        ctx_all = ctx_all + ctx_global * gates[:, self.focal_level :]
 
         # normalize context
         if self.normalize_modulator:
@@ -87,28 +97,39 @@ class FocalModulation(nn.Module):
         if self.use_postln_in_modulation:
             x_out = self.ln(x_out)
 
-        # post linear porjection
+        # post linear projection
         x_out = self.proj(x_out)
         x_out = self.proj_drop(x_out)
         return x_out
 
 
 class FocalModulationBlock(nn.Module):
-    """ Focal Modulation Block.
+    """Focal Modulation Block.
+
     Args:
         dim (int): Number of input channels.
         mlp_ratio (float): Ratio of mlp hidden dim to embedding dim.
         drop (float, optional): Dropout rate. Default: 0.0
         drop_path (float, optional): Stochastic depth rate. Default: 0.0
         act_layer (nn.Module, optional): Activation layer. Default: nn.GELU
-        norm_layer (nn.Module, optional): Normalization layer.  Default: nn.LayerNorm
+        norm_layer (nn.Module, optional): Normalization layer. Default: nn.LayerNorm
         focal_level (int): number of focal levels
-        focal_window (int): focal kernel size at level 1
+        focal_window (int): focal kernel size at level 1.
     """
 
-    def __init__(self, dim, mlp_ratio=4., drop=0., drop_path=0.,
-                 act_layer=nn.GELU, norm_layer=nn.LayerNorm,
-                 focal_level=2, focal_window=9, use_layerscale=False, layerscale_value=1e-4):
+    def __init__(
+        self,
+        dim,
+        mlp_ratio=4.0,
+        drop=0.0,
+        drop_path=0.0,
+        act_layer=nn.GELU,
+        norm_layer=nn.LayerNorm,
+        focal_level=2,
+        focal_window=9,
+        use_layerscale=False,
+        layerscale_value=1e-4,
+    ):
         super().__init__()
         self.dim = dim
         self.mlp_ratio = mlp_ratio
@@ -121,7 +142,7 @@ class FocalModulationBlock(nn.Module):
             dim, focal_window=self.focal_window, focal_level=self.focal_level, proj_drop=drop
         )
 
-        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
         self.norm2 = norm_layer(dim)
         mlp_hidden_dim = int(dim * mlp_ratio)
         self.mlp = Mlp(in_features=dim, hidden_features=mlp_hidden_dim, act_layer=act_layer, drop=drop)
@@ -132,11 +153,12 @@ class FocalModulationBlock(nn.Module):
         self.gamma_1 = 1.0
         self.gamma_2 = 1.0
         if self.use_layerscale:
-            self.gamma_1 = nn.Parameter(layerscale_value * torch.ones((dim)), requires_grad=True)
-            self.gamma_2 = nn.Parameter(layerscale_value * torch.ones((dim)), requires_grad=True)
+            self.gamma_1 = nn.Parameter(layerscale_value * torch.ones(dim), requires_grad=True)
+            self.gamma_2 = nn.Parameter(layerscale_value * torch.ones(dim), requires_grad=True)
 
     def forward(self, x):
-        """ Forward function.
+        """Forward function.
+
         Args:
             x: Input feature, tensor size (B, H*W, C).
             H, W: Spatial resolution of the input feature.
@@ -157,5 +179,3 @@ class FocalModulationBlock(nn.Module):
         x = x + self.drop_path(self.gamma_2 * self.mlp(self.norm2(x)))
 
         return x
-
-
