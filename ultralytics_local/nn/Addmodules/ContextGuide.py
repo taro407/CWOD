@@ -1,17 +1,17 @@
 import torch
 import torch.nn as nn
 
-__all__ = ['C3k2_ContextGuidedBlock', 'ContextGuidedBlock_Down']
+__all__ = ["C3k2_ContextGuidedBlock", "ContextGuidedBlock_Down"]
 
 
 class ConvBNPReLU(nn.Module):
     def __init__(self, nIn, nOut, kSize, stride=1):
         """
-        args:
+        Args:
             nIn: number of input channels
             nOut: number of output channels
             kSize: kernel size
-            stride: stride rate for down-sampling. Default is 1
+            stride: stride rate for down-sampling. Default is 1.
         """
         super().__init__()
         if isinstance(kSize, tuple):
@@ -23,9 +23,9 @@ class ConvBNPReLU(nn.Module):
 
     def forward(self, input):
         """
-        args:
-           input: input feature map
-           return: transformed feature map
+        Args:
+            input: input feature map
+            return: transformed feature map.
         """
         output = self.conv(input)
         output = self.bn(output)
@@ -36,8 +36,8 @@ class ConvBNPReLU(nn.Module):
 class BNPReLU(nn.Module):
     def __init__(self, nOut):
         """
-        args:
-           nOut: channels of output feature maps
+        Args:
+            nOut: channels of output feature maps.
         """
         super().__init__()
         self.bn = nn.BatchNorm2d(nOut, eps=1e-03)
@@ -45,9 +45,9 @@ class BNPReLU(nn.Module):
 
     def forward(self, input):
         """
-        args:
-           input: input feature map
-           return: normalized and thresholded feature map
+        Args:
+            input: input feature map
+            return: normalized and thresholded feature map.
         """
         output = self.bn(input)
         output = self.act(output)
@@ -57,11 +57,11 @@ class BNPReLU(nn.Module):
 class ConvBN(nn.Module):
     def __init__(self, nIn, nOut, kSize, stride=1):
         """
-        args:
-           nIn: number of input channels
-           nOut: number of output channels
-           kSize: kernel size
-           stride: optinal stide for down-sampling
+        Args:
+            nIn: number of input channels
+            nOut: number of output channels
+            kSize: kernel size
+            stride: optional stide for down-sampling.
         """
         super().__init__()
         if isinstance(kSize, tuple):
@@ -72,9 +72,9 @@ class ConvBN(nn.Module):
 
     def forward(self, input):
         """
-        args:
-           input: input feature map
-           return: transformed feature map
+        Args:
+            input: input feature map
+            return: transformed feature map.
         """
         output = self.conv(input)
         output = self.bn(output)
@@ -84,11 +84,11 @@ class ConvBN(nn.Module):
 class Conv(nn.Module):
     def __init__(self, nIn, nOut, kSize, stride=1):
         """
-        args:
+        Args:
             nIn: number of input channels
             nOut: number of output channels
             kSize: kernel size
-            stride: optional stride rate for down-sampling
+            stride: optional stride rate for down-sampling.
         """
         super().__init__()
         if isinstance(kSize, tuple):
@@ -98,9 +98,9 @@ class Conv(nn.Module):
 
     def forward(self, input):
         """
-        args:
-           input: input feature map
-           return: transformed feature map
+        Args:
+            input: input feature map
+            return: transformed feature map.
         """
         output = self.conv(input)
         return output
@@ -113,20 +113,21 @@ class ChannelWiseConv(nn.Module):
             nIn: number of input channels
             nOut: number of output channels, default (nIn == nOut)
             kSize: kernel size
-            stride: optional stride rate for down-sampling
+            stride: optional stride rate for down-sampling.
         """
         super().__init__()
         if isinstance(kSize, tuple):
             kSize = kSize[0]
         padding = int((kSize - 1) / 2)
-        self.conv = nn.Conv2d(nIn, nOut, (kSize, kSize), stride=stride, padding=(padding, padding), groups=nIn,
-                              bias=False)
+        self.conv = nn.Conv2d(
+            nIn, nOut, (kSize, kSize), stride=stride, padding=(padding, padding), groups=nIn, bias=False
+        )
 
     def forward(self, input):
         """
-        args:
-           input: input feature map
-           return: transformed feature map
+        Args:
+            input: input feature map
+            return: transformed feature map.
         """
         output = self.conv(input)
         return output
@@ -135,25 +136,26 @@ class ChannelWiseConv(nn.Module):
 class DilatedConv(nn.Module):
     def __init__(self, nIn, nOut, kSize, stride=1, d=1):
         """
-        args:
-           nIn: number of input channels
-           nOut: number of output channels
-           kSize: kernel size
-           stride: optional stride rate for down-sampling
-           d: dilation rate
+        Args:
+            nIn: number of input channels
+            nOut: number of output channels
+            kSize: kernel size
+            stride: optional stride rate for down-sampling
+            d: dilation rate.
         """
         super().__init__()
         if isinstance(kSize, tuple):
             kSize = kSize[0]
         padding = int((kSize - 1) / 2) * d
-        self.conv = nn.Conv2d(nIn, nOut, (kSize, kSize), stride=stride, padding=(padding, padding), bias=False,
-                              dilation=d)
+        self.conv = nn.Conv2d(
+            nIn, nOut, (kSize, kSize), stride=stride, padding=(padding, padding), bias=False, dilation=d
+        )
 
     def forward(self, input):
         """
-        args:
-           input: input feature map
-           return: transformed feature map
+        Args:
+            input: input feature map
+            return: transformed feature map.
         """
         output = self.conv(input)
         return output
@@ -162,43 +164,42 @@ class DilatedConv(nn.Module):
 class ChannelWiseDilatedConv(nn.Module):
     def __init__(self, nIn, nOut, kSize, stride=1, d=1):
         """
-        args:
-           nIn: number of input channels
-           nOut: number of output channels, default (nIn == nOut)
-           kSize: kernel size
-           stride: optional stride rate for down-sampling
-           d: dilation rate
+        Args:
+            nIn: number of input channels
+            nOut: number of output channels, default (nIn == nOut)
+            kSize: kernel size
+            stride: optional stride rate for down-sampling
+            d: dilation rate.
         """
         super().__init__()
         if isinstance(kSize, tuple):
             kSize = kSize[0]
         padding = int((kSize - 1) / 2) * d
-        self.conv = nn.Conv2d(nIn, nOut, (kSize, kSize), stride=stride, padding=(padding, padding), groups=nIn,
-                              bias=False, dilation=d)
+        self.conv = nn.Conv2d(
+            nIn, nOut, (kSize, kSize), stride=stride, padding=(padding, padding), groups=nIn, bias=False, dilation=d
+        )
 
     def forward(self, input):
         """
-        args:
-           input: input feature map
-           return: transformed feature map
+        Args:
+            input: input feature map
+            return: transformed feature map.
         """
         output = self.conv(input)
         return output
 
 
 class FGlo(nn.Module):
-    """
-    the FGlo class is employed to refine the joint feature of both local feature and surrounding context.
-    """
+    """The FGlo class is employed to refine the joint feature of both local feature and surrounding context."""
 
     def __init__(self, channel, reduction=16):
-        super(FGlo, self).__init__()
+        super().__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Sequential(
             nn.Linear(channel, channel // reduction),
             nn.ReLU(inplace=True),
             nn.Linear(channel // reduction, channel),
-            nn.Sigmoid()
+            nn.Sigmoid(),
         )
 
     def forward(self, x):
@@ -209,15 +210,13 @@ class FGlo(nn.Module):
 
 
 class ContextGuidedBlock_Down(nn.Module):
-    """
-    the size of feature map divided 2, (H,W,C)---->(H/2, W/2, 2C)
-    """
+    """The size of feature map divided 2, (H,W,C)---->(H/2, W/2, 2C)."""
 
     def __init__(self, nIn, nOut, dilation_rate=2, reduction=16):
         """
-        args:
-           nIn: the channel of input feature map
-           nOut: the channel of output feature map, and nOut=2*nIn
+        Args:
+            nIn: the channel of input feature map
+            nOut: the channel of output feature map, and nOut=2*nIn.
         """
         super().__init__()
 
@@ -250,10 +249,10 @@ class ContextGuidedBlock_Down(nn.Module):
 class ContextGuidedBlock(nn.Module):
     def __init__(self, nIn, nOut, dilation_rate=2, reduction=16, add=True):
         """
-        args:
-           nIn: number of input channels
-           nOut: number of output channels,
-           add: if true, residual learning
+        Args:
+            nIn: number of input channels
+            nOut: number of output channels,
+            add: if true, residual learning.
         """
         super().__init__()
         n = int(nOut / 2)
@@ -291,6 +290,7 @@ def autopad(k, p=None, d=1):  # kernel, padding, dilation
 
 class Conv(nn.Module):
     """Standard convolution with args(ch_in, ch_out, kernel, stride, padding, groups, dilation, activation)."""
+
     default_act = nn.SiLU()  # default activation
 
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, d=1, act=True):
