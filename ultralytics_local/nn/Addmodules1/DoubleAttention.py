@@ -1,12 +1,10 @@
-import numpy as np
 import torch
 from torch import nn
-from torch.nn import init
 from torch.nn import functional as F
+from torch.nn import init
 
 
 class DoubleAttention(nn.Module):
-
     def __init__(self, in_channels, c_m=128, c_n=128, reconstruct=True):
         super().__init__()
         self.in_channels = in_channels
@@ -23,7 +21,7 @@ class DoubleAttention(nn.Module):
     def init_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                init.kaiming_normal_(m.weight, mode='fan_out')
+                init.kaiming_normal_(m.weight, mode="fan_out")
                 if m.bias is not None:
                     init.constant_(m.bias, 0)
             elif isinstance(m, nn.BatchNorm2d):
