@@ -423,7 +423,6 @@ Expand sections below for information on how these models were exported and test
 
     ```python
     import cv2
-
     from ultralytics import YOLO
 
     model = YOLO("yolov8n.engine")
