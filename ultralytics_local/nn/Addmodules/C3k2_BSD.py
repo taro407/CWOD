@@ -1,13 +1,12 @@
-
+import math
+from functools import partial
 
 import torch
 import torch.nn as nn
-from functools import partial
-import math
-from timm.models.layers import trunc_normal_tf_
 from timm.models.helpers import named_apply
+from timm.models.layers import trunc_normal_tf_
 
-__all__ = ['C3k2_BSD', 'C3k2_MSCB2']
+__all__ = ["C3k2_BSD", "C3k2_MSCB2"]
 
 
 def gcd(a, b):
@@ -17,22 +16,22 @@ def gcd(a, b):
 
 
 # Other types of layers can go here (e.g., nn.Linear, etc.)
-def _init_weights(module, name, scheme=''):
+def _init_weights(module, name, scheme=""):
     if isinstance(module, nn.Conv2d) or isinstance(module, nn.Conv3d):
-        if scheme == 'normal':
-            nn.init.normal_(module.weight, std=.02)
+        if scheme == "normal":
+            nn.init.normal_(module.weight, std=0.02)
             if module.bias is not None:
                 nn.init.zeros_(module.bias)
-        elif scheme == 'trunc_normal':
-            trunc_normal_tf_(module.weight, std=.02)
+        elif scheme == "trunc_normal":
+            trunc_normal_tf_(module.weight, std=0.02)
             if module.bias is not None:
                 nn.init.zeros_(module.bias)
-        elif scheme == 'xavier_normal':
+        elif scheme == "xavier_normal":
             nn.init.xavier_normal_(module.weight)
             if module.bias is not None:
                 nn.init.zeros_(module.bias)
-        elif scheme == 'kaiming_normal':
-            nn.init.kaiming_normal_(module.weight, mode='fan_out', nonlinearity='relu')
+        elif scheme == "kaiming_normal":
+            nn.init.kaiming_normal_(module.weight, mode="fan_out", nonlinearity="relu")
             if module.bias is not None:
                 nn.init.zeros_(module.bias)
         else:
@@ -53,22 +52,22 @@ def _init_weights(module, name, scheme=''):
 def act_layer(act, inplace=False, neg_slope=0.2, n_prelu=1):
     # activation layer
     act = act.lower()
-    if act == 'relu':
+    if act == "relu":
         layer = nn.ReLU(inplace)
-    elif act == 'relu6':
+    elif act == "relu6":
         layer = nn.ReLU6(inplace)
-    elif act == 'leakyrelu':
+    elif act == "leakyrelu":
         layer = nn.LeakyReLU(neg_slope, inplace)
-    elif act == 'prelu':
+    elif act == "prelu":
         layer = nn.PReLU(num_parameters=n_prelu, init=neg_slope)
-    elif act == 'gelu':
+    elif act == "gelu":
         layer = nn.GELU()
-    elif act == 'hswish':
+    elif act == "hswish":
         layer = nn.Hardswish(inplace)
-    elif act == 'silu' :
+    elif act == "silu":
         layer = nn.SiLU(inplace)
     else:
-        raise NotImplementedError('activation layer [%s] is not found' % act)
+        raise NotImplementedError(f"activation layer [{act}] is not found")
     return layer
 
 
@@ -76,8 +75,7 @@ def channel_shuffle(x, groups):
     batchsize, num_channels, height, width = x.data.size()
     channels_per_group = num_channels // groups
     # reshape
-    x = x.view(batchsize, groups,
-               channels_per_group, height, width)
+    x = x.view(batchsize, groups, channels_per_group, height, width)
     x = torch.transpose(x, 1, 2).contiguous()
     # flatten
     x = x.view(batchsize, -1, height, width)
@@ -86,27 +84,36 @@ def channel_shuffle(x, groups):
 
 #   Multi-scale depth-wise convolution (MSDC)
 class MSDC(nn.Module):
-    def __init__(self, in_channels, kernel_sizes, stride, activation=' ', dw_parallel=True):
-        super(MSDC, self).__init__()
+    def __init__(self, in_channels, kernel_sizes, stride, activation=" ", dw_parallel=True):
+        super().__init__()
 
         self.in_channels = in_channels
         self.kernel_sizes = kernel_sizes
         self.activation = activation
         self.dw_parallel = dw_parallel
 
-        self.dwconvs = nn.ModuleList([
-            nn.Sequential(
-                nn.Conv2d(self.in_channels, self.in_channels, kernel_size, stride, kernel_size // 2,
-                          groups=self.in_channels, bias=False),
-                nn.BatchNorm2d(self.in_channels),
-                act_layer(self.activation, inplace=True)
-            )
-            for kernel_size in self.kernel_sizes
-        ])
+        self.dwconvs = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Conv2d(
+                        self.in_channels,
+                        self.in_channels,
+                        kernel_size,
+                        stride,
+                        kernel_size // 2,
+                        groups=self.in_channels,
+                        bias=False,
+                    ),
+                    nn.BatchNorm2d(self.in_channels),
+                    act_layer(self.activation, inplace=True),
+                )
+                for kernel_size in self.kernel_sizes
+            ]
+        )
 
-        self.init_weights('normal')
+        self.init_weights("normal")
 
-    def init_weights(self, scheme=''):
+    def init_weights(self, scheme=""):
         named_apply(partial(_init_weights, scheme=scheme), self)
 
     def forward(self, x):
@@ -115,20 +122,27 @@ class MSDC(nn.Module):
         for dwconv in self.dwconvs:
             dw_out = dwconv(x)
             outputs.append(dw_out)
-            if self.dw_parallel == False:
+            if not self.dw_parallel:
                 x = x + dw_out
         # You can return outputs based on what you intend to do with them
         return outputs
 
 
 class MSCB(nn.Module):
-    """
-    Multi-scale convolution block (MSCB)
-    """
+    """Multi-scale convolution block (MSCB)."""
 
-    def __init__(self, in_channels, out_channels, shortcut=False, stride=1, kernel_sizes=[1, 3], expansion_factor=2,
-                 dw_parallel=True, activation='leakyrelu'):
-        super(MSCB, self).__init__()
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        shortcut=False,
+        stride=1,
+        kernel_sizes=[1, 3],
+        expansion_factor=2,
+        dw_parallel=True,
+        activation="leakyrelu",
+    ):
+        super().__init__()
         add = shortcut
         self.in_channels = in_channels
         self.out_channels = out_channels
@@ -150,11 +164,12 @@ class MSCB(nn.Module):
             # pointwise convolution
             nn.Conv2d(self.in_channels, self.ex_channels, 1, 1, 0, bias=False),
             nn.BatchNorm2d(self.ex_channels),
-            act_layer(self.activation, inplace=True)
+            act_layer(self.activation, inplace=True),
         )
-        self.msdc = MSDC(self.ex_channels, self.kernel_sizes, self.stride, self.activation,
-                         dw_parallel=self.dw_parallel)
-        if self.add == True:
+        self.msdc = MSDC(
+            self.ex_channels, self.kernel_sizes, self.stride, self.activation, dw_parallel=self.dw_parallel
+        )
+        if self.add:
             self.combined_channels = self.ex_channels * 1
         else:
             self.combined_channels = self.ex_channels * self.n_scales
@@ -165,22 +180,22 @@ class MSCB(nn.Module):
         )
         if self.use_skip_connection and (self.in_channels != self.out_channels):
             self.conv1x1 = nn.Conv2d(self.in_channels, self.out_channels, 1, 1, 0, bias=False)
-        self.init_weights('normal')
+        self.init_weights("normal")
 
-    def init_weights(self, scheme=''):
+    def init_weights(self, scheme=""):
         named_apply(partial(_init_weights, scheme=scheme), self)
 
     def forward(self, x):
         pout1 = self.pconv1(x)
         msdc_outs = self.msdc(pout1)
-        if self.add == True:
-            dout = 0
+        if self.add:
+            doubt = 0
             for dwout in msdc_outs:
-                dout = dout + dwout
+                doubt = doubt + dwout
         else:
-            dout = torch.cat(msdc_outs, dim=1)
-        dout = channel_shuffle(dout, gcd(self.combined_channels, self.out_channels))
-        out = self.pconv2(dout)
+            doubt = torch.cat(msdc_outs, dim=1)
+        doubt = channel_shuffle(doubt, gcd(self.combined_channels, self.out_channels))
+        out = self.pconv2(doubt)
         if self.use_skip_connection:
             if self.in_channels != self.out_channels:
                 x = self.conv1x1(x)
@@ -200,6 +215,7 @@ def autopad(k, p=None, d=1):  # kernel, padding, dilation
 
 class Conv(nn.Module):
     """Standard convolution with args(ch_in, ch_out, kernel, stride, padding, groups, dilation, activation)."""
+
     default_act = nn.SiLU()  # default activation
 
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, d=1, act=True):
@@ -316,8 +332,8 @@ class C3k2_MSCB2(C2f):
         """Initializes the C3k2 module, a faster CSP Bottleneck with 2 convolutions and optional C3k blocks."""
         super().__init__(c1, c2, n, shortcut, g, e)
         self.m = nn.ModuleList(
-            C3k_MSCB(self.c, self.c, 2, shortcut, g) if c3k else Bottleneck(self.c, self.c, shortcut, g) for _ in
-            range(n)
+            C3k_MSCB(self.c, self.c, 2, shortcut, g) if c3k else Bottleneck(self.c, self.c, shortcut, g)
+            for _ in range(n)
         )
 
 
@@ -330,7 +346,10 @@ if __name__ == "__main__":
     image1 = torch.rand(*image_size1)
 
     # Model
-    mobilenet_v1 = MSCB(64, 64, )
+    mobilenet_v1 = MSCB(
+        64,
+        64,
+    )
 
     out = mobilenet_v1(image)
     print(out.size())
@@ -352,4 +371,3 @@ if __name__ == "__main__":
         print(model.pconv2[2])
     else:
         print("\n>>> MSCB.pconv2 没有激活层 (仅 Conv + BN)")
-
