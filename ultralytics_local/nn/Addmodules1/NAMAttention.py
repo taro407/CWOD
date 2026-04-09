@@ -1,14 +1,10 @@
-from torch import nn
-from ultralytics_local.nn.modules.conv import Conv
 import torch
-import torch.nn as nn
-
-from torch.nn import functional as F
+from torch import nn
 
 
 class Channel_Att(nn.Module):
     def __init__(self, channels, t=16):
-        super(Channel_Att, self).__init__()
+        super().__init__()
         self.channels = channels
 
         self.bn2 = nn.BatchNorm2d(self.channels, affine=True)
@@ -29,11 +25,10 @@ class Channel_Att(nn.Module):
 
 class NAMAttention(nn.Module):
     def __init__(self, channels, shape, out_channels=None, no_spatial=True):
-        super(NAMAttention, self).__init__()
+        super().__init__()
         self.Channel_Att = Channel_Att(channels)
 
     def forward(self, x):
         x_out1 = self.Channel_Att(x)
 
         return x_out1
-

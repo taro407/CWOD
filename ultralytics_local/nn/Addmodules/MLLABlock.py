@@ -11,18 +11,18 @@
 import torch
 import torch.nn as nn
 
-__all__ = ['C3k2_MLLABlock1', 'C3k2_MLLABlock2']
+__all__ = ["C3k2_MLLABlock1", "C3k2_MLLABlock2"]
 
 
-def drop_path(x, drop_prob: float = 0., training: bool = False, scale_by_keep: bool = True):
-    """Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks).
-    This is the same as the DropConnect impl I created for EfficientNet, etc networks, however,
-    the original name is misleading as 'Drop Connect' is a different form of dropout in a separate paper...
-    See discussion: https://github.com/tensorflow/tpu/issues/494#issuecomment-532968956 ... I've opted for
-    changing the layer and argument names to 'drop path' rather than mix DropConnect as a layer name and use
-    'survival rate' as the argument.
+def drop_path(x, drop_prob: float = 0.0, training: bool = False, scale_by_keep: bool = True):
+    """Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks). This is the same as the
+    DropConnect impl I created for EfficientNet, etc networks, however, the original name is misleading as 'Drop
+    Connect' is a different form of dropout in a separate paper... See discussion:
+    https://github.com/tensorflow/tpu/issues/494#issuecomment-532968956 ... I've opted for changing the layer and
+    argument names to 'drop path' rather than mix DropConnect as a layer name and use 'survival rate' as
+    the argument.
     """
-    if drop_prob == 0. or not training:
+    if drop_prob == 0.0 or not training:
         return x
     keep_prob = 1 - drop_prob
     shape = (x.shape[0],) + (1,) * (x.ndim - 1)  # work with diff dim tensors, not just 2D ConvNets
@@ -33,11 +33,10 @@ def drop_path(x, drop_prob: float = 0., training: bool = False, scale_by_keep: b
 
 
 class DropPath(nn.Module):
-    """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks).
-    """
+    """Drop paths (Stochastic Depth) per sample (when applied in main path of residual blocks)."""
 
-    def __init__(self, drop_prob: float = 0., scale_by_keep: bool = True):
-        super(DropPath, self).__init__()
+    def __init__(self, drop_prob: float = 0.0, scale_by_keep: bool = True):
+        super().__init__()
         self.drop_prob = drop_prob
         self.scale_by_keep = scale_by_keep
 
@@ -45,11 +44,11 @@ class DropPath(nn.Module):
         return drop_path(x, self.drop_prob, self.training, self.scale_by_keep)
 
     def extra_repr(self):
-        return f'drop_prob={round(self.drop_prob, 3):0.3f}'
+        return f"drop_prob={round(self.drop_prob, 3):0.3f}"
 
 
 class Mlp(nn.Module):
-    def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.):
+    def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.0):
         super().__init__()
         out_features = out_features or in_features
         hidden_features = hidden_features or in_features
@@ -68,9 +67,21 @@ class Mlp(nn.Module):
 
 
 class ConvLayer(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=0, dilation=1, groups=1,
-                 bias=True, dropout=0, norm=nn.BatchNorm2d, act_func=nn.ReLU):
-        super(ConvLayer, self).__init__()
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size=3,
+        stride=1,
+        padding=0,
+        dilation=1,
+        groups=1,
+        bias=True,
+        dropout=0,
+        norm=nn.BatchNorm2d,
+        act_func=nn.ReLU,
+    ):
+        super().__init__()
         self.dropout = nn.Dropout2d(dropout, inplace=False) if dropout > 0 else None
         self.conv = nn.Conv2d(
             in_channels,
@@ -97,11 +108,10 @@ class ConvLayer(nn.Module):
 
 
 class RoPE(torch.nn.Module):
-    r"""Rotary Positional Embedding.
-    """
+    r"""Rotary Positional Embedding."""
 
     def __init__(self, base=10000):
-        super(RoPE, self).__init__()
+        super().__init__()
         self.base = base
 
     def generate_rotations(self, x):
@@ -113,9 +123,15 @@ class RoPE(torch.nn.Module):
 
         # 生成角度
         theta_ks = 1 / (self.base ** (torch.arange(k_max, dtype=x.dtype, device=x.device) / k_max))
-        angles = torch.cat([t.unsqueeze(-1) * theta_ks for t in
-                            torch.meshgrid([torch.arange(d, dtype=x.dtype, device=x.device) for d in channel_dims],
-                                           indexing='ij')], dim=-1)
+        angles = torch.cat(
+            [
+                t.unsqueeze(-1) * theta_ks
+                for t in torch.meshgrid(
+                    [torch.arange(d, dtype=x.dtype, device=x.device) for d in channel_dims], indexing="ij"
+                )
+            ],
+            dim=-1,
+        )
 
         # 计算旋转矩阵的实部和虚部
         rotations_re = torch.cos(angles).unsqueeze(dim=-1)
@@ -139,11 +155,12 @@ class RoPE(torch.nn.Module):
 
 
 class LinearAttention(nn.Module):
-    r""" Linear Attention with LePE and RoPE.
+    r"""Linear Attention with LePE and RoPE.
+
     Args:
         dim (int): Number of input channels.
         num_heads (int): Number of attention heads.
-        qkv_bias (bool, optional):  If True, add a learnable bias to query, key, value. Default: True
+        qkv_bias (bool, optional): If True, add a learnable bias to query, key, value. Default: True.
     """
 
     def __init__(self, dim, num_heads=4, qkv_bias=True, **kwargs):
@@ -158,11 +175,11 @@ class LinearAttention(nn.Module):
     def forward(self, x):
         """
         Args:
-            x: input features with shape of (B, N, C)
+            x: input features with shape of (B, N, C).
         """
         b, n, c = x.shape
-        h = int(n ** 0.5)
-        w = int(n ** 0.5)
+        h = int(n**0.5)
+        w = int(n**0.5)
         num_heads = self.num_heads
         head_dim = c // num_heads
 
@@ -179,7 +196,7 @@ class LinearAttention(nn.Module):
         v = v.reshape(b, n, num_heads, head_dim).permute(0, 2, 1, 3)
 
         z = 1 / (q @ k.mean(dim=-2, keepdim=True).transpose(-2, -1) + 1e-6)
-        kv = (k_rope.transpose(-2, -1) * (n ** -0.5)) @ (v * (n ** -0.5))
+        kv = (k_rope.transpose(-2, -1) * (n**-0.5)) @ (v * (n**-0.5))
         x = q_rope @ kv * z
 
         x = x.transpose(1, 2).reshape(b, n, c)
@@ -189,11 +206,12 @@ class LinearAttention(nn.Module):
         return x
 
     def extra_repr(self) -> str:
-        return f'dim={self.dim}, num_heads={self.num_heads}'
+        return f"dim={self.dim}, num_heads={self.num_heads}"
 
 
 class MLLABlock(nn.Module):
-    r""" MLLA Block.
+    r"""MLLA Block.
+
     Args:
         dim (int): Number of input channels.
         input_resolution (tuple[int]): Input resulotion.
@@ -203,11 +221,21 @@ class MLLABlock(nn.Module):
         drop (float, optional): Dropout rate. Default: 0.0
         drop_path (float, optional): Stochastic depth rate. Default: 0.0
         act_layer (nn.Module, optional): Activation layer. Default: nn.GELU
-        norm_layer (nn.Module, optional): Normalization layer.  Default: nn.LayerNorm
+        norm_layer (nn.Module, optional): Normalization layer. Default: nn.LayerNorm.
     """
 
-    def __init__(self, dim, num_heads=4, mlp_ratio=4., qkv_bias=True, drop=0., drop_path=0.,
-                 act_layer=nn.GELU, norm_layer=nn.LayerNorm, **kwargs):
+    def __init__(
+        self,
+        dim,
+        num_heads=4,
+        mlp_ratio=4.0,
+        qkv_bias=True,
+        drop=0.0,
+        drop_path=0.0,
+        act_layer=nn.GELU,
+        norm_layer=nn.LayerNorm,
+        **kwargs,
+    ):
         super().__init__()
         self.dim = dim
         num_heads = max(1, dim // 64)
@@ -223,7 +251,7 @@ class MLLABlock(nn.Module):
         self.act = nn.SiLU()
         self.attn = LinearAttention(dim=dim, num_heads=num_heads, qkv_bias=qkv_bias)
         self.out_proj = nn.Linear(dim, dim)
-        self.drop_path = DropPath(drop_path) if drop_path > 0. else nn.Identity()
+        self.drop_path = DropPath(drop_path) if drop_path > 0.0 else nn.Identity()
 
         self.cpe2 = nn.Conv2d(dim, dim, 3, padding=1, groups=dim)
         self.norm2 = norm_layer(dim)
@@ -232,8 +260,8 @@ class MLLABlock(nn.Module):
     def forward(self, x):
         x = x.reshape((x.size(0), x.size(2) * x.size(3), x.size(1)))
         b, n, c = x.shape
-        H = int(n ** 0.5)
-        W = int(n ** 0.5)
+        H = int(n**0.5)
+        W = int(n**0.5)
         B, L, C = x.shape
         assert L == H * W, "input feature has wrong size"
 
@@ -258,8 +286,10 @@ class MLLABlock(nn.Module):
         return x
 
     def extra_repr(self) -> str:
-        return f"dim={self.dim}, input_resolution={self.input_resolution}, num_heads={self.num_heads}, " \
-               f"mlp_ratio={self.mlp_ratio}"
+        return (
+            f"dim={self.dim}, input_resolution={self.input_resolution}, num_heads={self.num_heads}, "
+            f"mlp_ratio={self.mlp_ratio}"
+        )
 
 
 def autopad(k, p=None, d=1):  # kernel, padding, dilation
@@ -273,6 +303,7 @@ def autopad(k, p=None, d=1):  # kernel, padding, dilation
 
 class Conv(nn.Module):
     """Standard convolution with args(ch_in, ch_out, kernel, stride, padding, groups, dilation, activation)."""
+
     default_act = nn.SiLU()  # default activation
 
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, d=1, act=True):
@@ -377,7 +408,12 @@ class C3k2_MLLABlock1(C2f):
         """Initializes the C3k2 module, a faster CSP Bottleneck with 2 convolutions and optional C3k blocks."""
         super().__init__(c1, c2, n, shortcut, g, e)
         self.m = nn.ModuleList(
-            C3k(self.c, self.c, 2, shortcut, g) if c3k else MLLABlock(self.c, ) for _ in range(n)
+            C3k(self.c, self.c, 2, shortcut, g)
+            if c3k
+            else MLLABlock(
+                self.c,
+            )
+            for _ in range(n)
         )
         # 解析利用MLLABlock替换Bottneck
 
@@ -389,8 +425,8 @@ class C3k2_MLLABlock2(C2f):
         """Initializes the C3k2 module, a faster CSP Bottleneck with 2 convolutions and optional C3k blocks."""
         super().__init__(c1, c2, n, shortcut, g, e)
         self.m = nn.ModuleList(
-            C3kMLLABlock(self.c, self.c, 2, shortcut, g) if c3k else Bottleneck(self.c, self.c, shortcut, g) for _ in
-            range(n)
+            C3kMLLABlock(self.c, self.c, 2, shortcut, g) if c3k else Bottleneck(self.c, self.c, shortcut, g)
+            for _ in range(n)
         )
         # 解析利用MLLABlock替换C3k中的Bottneck
 
