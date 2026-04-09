@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-__all__ = ['SPDConv']
+__all__ = ["SPDConv"]
 
 
 def autopad(k, p=None, d=1):  # kernel, padding, dilation
@@ -15,6 +15,7 @@ def autopad(k, p=None, d=1):  # kernel, padding, dilation
 
 class SPDConv(nn.Module):
     """Standard convolution with args(ch_in, ch_out, kernel, stride, padding, groups, dilation, activation)."""
+
     default_act = nn.SiLU()  # default activation
 
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, d=1, act=True):
@@ -34,4 +35,3 @@ class SPDConv(nn.Module):
         """Perform transposed convolution of 2D data."""
         x = torch.cat([x[..., ::2, ::2], x[..., 1::2, ::2], x[..., ::2, 1::2], x[..., 1::2, 1::2]], 1)
         return self.act(self.conv(x))
-

@@ -1,25 +1,29 @@
 # cwod_gui.py
+import csv
 import os
 import sys
 import time
-import csv
 from datetime import datetime
 
 import cv2
 import numpy as np
-
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
-    QApplication, QWidget, QFileDialog, QMessageBox,
-    QButtonGroup, QGraphicsScene, QTableWidgetItem
+    QAbstractItemView,
+    QApplication,
+    QButtonGroup,
+    QFileDialog,
+    QGraphicsScene,
+    QHeaderView,
+    QMessageBox,
+    QTableWidgetItem,
+    QWidget,
 )
-from PySide6.QtWidgets import QHeaderView, QAbstractItemView
-
 from ui_paper import Ui_Form
 
-
 # -------------------------
+
 
 # -------------------------
 def imread_unicode(path: str):
@@ -36,6 +40,7 @@ def bgr_to_qimage(bgr: np.ndarray) -> QImage:
 
 # -------------------------
 
+
 # -------------------------
 class ModelLoader(QThread):
     loaded = Signal(object, str)  # (model, path)
@@ -48,6 +53,7 @@ class ModelLoader(QThread):
     def run(self):
         try:
             from ultralytics_local import YOLO
+
             if not os.path.exists(self.model_path):
                 self.failed.emit(f"Model not found: {self.model_path}")
                 return
@@ -58,6 +64,7 @@ class ModelLoader(QThread):
 
 
 # -------------------------
+
 
 # -------------------------
 class StreamWorker(QThread):
@@ -117,9 +124,7 @@ class StreamWorker(QThread):
                     self.info_out.emit("No model loaded. Detection disabled.")
                 else:
                     try:
-                        res = self.model.predict(
-                            frame, conf=self.conf, iou=self.iou, verbose=False
-                        )[0]
+                        res = self.model.predict(frame, conf=self.conf, iou=self.iou, verbose=False)[0]
                         show_frame = res.plot()
 
                         if res.boxes is not None and len(res.boxes) > 0:
@@ -133,17 +138,19 @@ class StreamWorker(QThread):
                                 w = max(0.0, x2 - x1)
                                 h = max(0.0, y2 - y1)
 
-                                det_rows.append({
-                                    "no": i + 1,
-                                    "cls": names.get(int(clss[i]), str(int(clss[i]))),
-                                    "conf": float(confs[i]),
-                                    "x": float(x1),
-                                    "y": float(y1),
-                                    "w": float(w),
-                                    "h": float(h),
-                                    "model": self.model_name,
-                                    "src": "stream",
-                                })
+                                det_rows.append(
+                                    {
+                                        "no": i + 1,
+                                        "cls": names.get(int(clss[i]), str(int(clss[i]))),
+                                        "conf": float(confs[i]),
+                                        "x": float(x1),
+                                        "y": float(y1),
+                                        "w": float(w),
+                                        "h": float(h),
+                                        "model": self.model_name,
+                                        "src": "stream",
+                                    }
+                                )
                     except Exception as e:
                         self.info_out.emit(f"Inference error: {e}")
 
@@ -164,13 +171,14 @@ class StreamWorker(QThread):
 
 # -------------------------
 
+
 # -------------------------
 class App(QWidget):
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
     MODEL_PATHS = {
-        'Foggy': os.path.join(BASE_DIR, 'CWOD_fog.pt'),
-        'Rainy': os.path.join(BASE_DIR, 'CWOD_rain.pt'),
-        'Dark': os.path.join(BASE_DIR, 'CWOD_dark.pt'),
+        "Foggy": os.path.join(BASE_DIR, "CWOD_fog.pt"),
+        "Rainy": os.path.join(BASE_DIR, "CWOD_rain.pt"),
+        "Dark": os.path.join(BASE_DIR, "CWOD_dark.pt"),
     }
 
     SELECT_GREEN = "#6FBF73"
@@ -210,18 +218,18 @@ class App(QWidget):
         self.ui.label_FPS.setText("FPS: --")
         self.ui.label_Total.setText("Total: 0")
 
-        if hasattr(self.ui, 'label_Status'):
-            self.ui.label_Status.setText('Status: Ready')
+        if hasattr(self.ui, "label_Status"):
+            self.ui.label_Status.setText("Status: Ready")
 
     def _set_status(self, text: str):
-        if hasattr(self.ui, 'label_Status') and self.ui.label_Status is not None:
-            if str(text).startswith('Status:'):
+        if hasattr(self.ui, "label_Status") and self.ui.label_Status is not None:
+            if str(text).startswith("Status:"):
                 self.ui.label_Status.setText(str(text))
             else:
                 self.ui.label_Status.setText(f"Status: {text}")
 
     def _on_stream_info(self, s: str):
-        print('[INFO]', s)
+        print("[INFO]", s)
         self._set_status(s)
 
     def _setup_view(self):
@@ -376,14 +384,12 @@ class App(QWidget):
             self.stream_worker.update_model(self.model, os.path.basename(path))
 
     def _on_model_failed(self, msg: str):
-        self._set_status('Model load failed')
+        self._set_status("Model load failed")
         QMessageBox.critical(self, "Model Load Failed", msg)
         self.ui.label_FPS.setText("FPS: --")
 
     def _pick_image(self):
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Select Image", "", "Images (*.jpg *.jpeg *.png *.bmp)"
-        )
+        path, _ = QFileDialog.getOpenFileName(self, "Select Image", "", "Images (*.jpg *.jpeg *.png *.bmp)")
         if not path:
             return
 
@@ -395,7 +401,7 @@ class App(QWidget):
 
         img = imread_unicode(path)
         if img is None:
-            self._set_status('Image read failed')
+            self._set_status("Image read failed")
             QMessageBox.warning(self, "Notice", "Failed to read image")
             return
 
@@ -405,9 +411,7 @@ class App(QWidget):
         self.ui.label_Total.setText("Total: 0")
 
     def _pick_video(self):
-        path, _ = QFileDialog.getOpenFileName(
-            self, "Select Video", "", "Videos (*.mp4 *.avi *.mov *.mkv)"
-        )
+        path, _ = QFileDialog.getOpenFileName(self, "Select Video", "", "Videos (*.mp4 *.avi *.mov *.mkv)")
         if not path:
             return
 
@@ -431,7 +435,7 @@ class App(QWidget):
         self._stop_stream_if_any()
         self.current_source_type = "camera"
         self.last_source_name = "camera"
-        self._set_status('Camera opened')
+        self._set_status("Camera opened")
 
         self.stream_worker = StreamWorker(0, is_camera=True)
         self._bind_stream_worker()
@@ -458,18 +462,19 @@ class App(QWidget):
 
     def _on_detect_clicked(self):
         if self.model is None:
-            self._set_status('Please load model first')
-            QMessageBox.warning(self, "Notice",
-                                "Please select a weather model first (weights will be loaded automatically).")
+            self._set_status("Please load model first")
+            QMessageBox.warning(
+                self, "Notice", "Please select a weather model first (weights will be loaded automatically)."
+            )
             return
 
         if self.current_source_type == "image":
             if not self.current_image_path:
                 QMessageBox.warning(self, "Notice", "Please select an image first.")
                 return
-            self._set_status('Detecting image...')
+            self._set_status("Detecting image...")
             self._detect_image_once(self.current_image_path)
-            self._set_status('Image done')
+            self._set_status("Image done")
 
         elif self.current_source_type in ("video", "camera"):
             if not self.stream_worker:
@@ -481,16 +486,16 @@ class App(QWidget):
             self.stream_worker.update_params(self.conf, self.iou)
             self.stream_worker.set_detect(self.detect_on)
             self.ui.pushButton_Detect.setText("Detect (ON)" if self.detect_on else "Detect")
-            self._set_status('Stream detect ON' if self.detect_on else 'Stream detect OFF')
+            self._set_status("Stream detect ON" if self.detect_on else "Stream detect OFF")
 
         else:
-            self._set_status('Please choose source')
+            self._set_status("Please choose source")
             QMessageBox.warning(self, "Notice", "Please choose Image / Video / Camera first.")
 
     def _detect_image_once(self, path: str):
         img = imread_unicode(path)
         if img is None:
-            self._set_status('Image read failed')
+            self._set_status("Image read failed")
             QMessageBox.warning(self, "Notice", "Failed to read image")
             return
 
@@ -515,17 +520,19 @@ class App(QWidget):
                 w = max(0.0, x2 - x1)
                 h = max(0.0, y2 - y1)
 
-                rows.append({
-                    "no": i + 1,
-                    "cls": names.get(int(clss[i]), str(int(clss[i]))),
-                    "conf": float(confs[i]),
-                    "x": float(x1),
-                    "y": float(y1),
-                    "w": float(w),
-                    "h": float(h),
-                    "model": os.path.basename(self.model_path),
-                    "src": os.path.basename(path),
-                })
+                rows.append(
+                    {
+                        "no": i + 1,
+                        "cls": names.get(int(clss[i]), str(int(clss[i]))),
+                        "conf": float(confs[i]),
+                        "x": float(x1),
+                        "y": float(y1),
+                        "w": float(w),
+                        "h": float(h),
+                        "model": os.path.basename(self.model_path),
+                        "src": os.path.basename(path),
+                    }
+                )
 
         self._set_table_rows(rows)
 
@@ -537,10 +544,7 @@ class App(QWidget):
         self.scene.clear()
         pix = QPixmap.fromImage(qimg)
         self.scene.addPixmap(pix)
-        self.ui.graphicsView.fitInView(
-            self.scene.itemsBoundingRect(),
-            Qt.AspectRatioMode.KeepAspectRatio
-        )
+        self.ui.graphicsView.fitInView(self.scene.itemsBoundingRect(), Qt.AspectRatioMode.KeepAspectRatio)
 
     def _set_table_rows(self, rows: list):
         self.last_rows = rows
@@ -567,16 +571,16 @@ class App(QWidget):
 
     def _on_save_clicked(self):
         if self.last_qimg is None:
-            self._set_status('Nothing to save')
+            self._set_status("Nothing to save")
             QMessageBox.warning(self, "Notice", "Nothing to save.")
             return
 
         out_dir = QFileDialog.getExistingDirectory(self, "Select Output Directory", os.getcwd())
         if not out_dir:
-            self._set_status('Save cancelled')
+            self._set_status("Save cancelled")
             return
 
-        self._set_status('Saving...')
+        self._set_status("Saving...")
 
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         img_name = f"cwod_result_{ts}.png"
@@ -596,22 +600,24 @@ class App(QWidget):
                 w = csv.writer(f)
                 w.writerow(headers)
                 for it in self.last_rows:
-                    w.writerow([
-                        it.get("no", ""),
-                        it.get("cls", ""),
-                        f"{it.get('conf', 0):.4f}",
-                        f"{it.get('x', 0):.2f}",
-                        f"{it.get('y', 0):.2f}",
-                        f"{it.get('w', 0):.2f}",
-                        f"{it.get('h', 0):.2f}",
-                        it.get("model", ""),
-                        it.get("src", self.last_source_name),
-                    ])
+                    w.writerow(
+                        [
+                            it.get("no", ""),
+                            it.get("cls", ""),
+                            f"{it.get('conf', 0):.4f}",
+                            f"{it.get('x', 0):.2f}",
+                            f"{it.get('y', 0):.2f}",
+                            f"{it.get('w', 0):.2f}",
+                            f"{it.get('h', 0):.2f}",
+                            it.get("model", ""),
+                            it.get("src", self.last_source_name),
+                        ]
+                    )
         except Exception as e:
             QMessageBox.warning(self, "Notice", f"Failed to save CSV: {e}")
             return
 
-        self._set_status('Saved')
+        self._set_status("Saved")
         QMessageBox.information(self, "Saved", f"Saved:\n{img_path}\n{csv_path}")
 
     def closeEvent(self, event):

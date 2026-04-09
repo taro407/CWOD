@@ -1,13 +1,11 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
-from ultralytics_local.nn.modules.conv import Conv, autopad
-from ultralytics_local.nn.modules.block import Bottleneck, C2f, C3k, C3k2
+from ultralytics_local.nn.modules.conv import Conv
 
 
 class PConv(nn.Module):
-    ''' Pinwheel-shaped Convolution using the Asymmetric Padding method. '''
+    """Pinwheel-shaped Convolution using the Asymmetric Padding method."""
 
     def __init__(self, c1, c2, k, s):
         super().__init__()

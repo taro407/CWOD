@@ -1,11 +1,11 @@
 import torch
 import torch.nn as nn
 
-__all__ = ['MLLAttention', 'C2PSAMLLA']
+__all__ = ["C2PSAMLLA", "MLLAttention"]
 
 
 class Mlp(nn.Module):
-    def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.):
+    def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.0):
         super().__init__()
         out_features = out_features or in_features
         hidden_features = hidden_features or in_features
@@ -24,9 +24,21 @@ class Mlp(nn.Module):
 
 
 class ConvLayer(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=0, dilation=1, groups=1,
-                 bias=True, dropout=0, norm=nn.BatchNorm2d, act_func=nn.ReLU):
-        super(ConvLayer, self).__init__()
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size=3,
+        stride=1,
+        padding=0,
+        dilation=1,
+        groups=1,
+        bias=True,
+        dropout=0,
+        norm=nn.BatchNorm2d,
+        act_func=nn.ReLU,
+    ):
+        super().__init__()
         self.dropout = nn.Dropout2d(dropout, inplace=False) if dropout > 0 else None
         self.conv = nn.Conv2d(
             in_channels,
@@ -53,11 +65,10 @@ class ConvLayer(nn.Module):
 
 
 class RoPE(torch.nn.Module):
-    r"""Rotary Positional Embedding.
-    """
+    r"""Rotary Positional Embedding."""
 
     def __init__(self, base=10000):
-        super(RoPE, self).__init__()
+        super().__init__()
         self.base = base
 
     def generate_rotations(self, x):
@@ -69,9 +80,15 @@ class RoPE(torch.nn.Module):
 
         # 生成角度
         theta_ks = 1 / (self.base ** (torch.arange(k_max, dtype=x.dtype, device=x.device) / k_max))
-        angles = torch.cat([t.unsqueeze(-1) * theta_ks for t in
-                            torch.meshgrid([torch.arange(d, dtype=x.dtype, device=x.device) for d in channel_dims],
-                                           indexing='ij')], dim=-1)
+        angles = torch.cat(
+            [
+                t.unsqueeze(-1) * theta_ks
+                for t in torch.meshgrid(
+                    [torch.arange(d, dtype=x.dtype, device=x.device) for d in channel_dims], indexing="ij"
+                )
+            ],
+            dim=-1,
+        )
 
         # 计算旋转矩阵的实部和虚部
         rotations_re = torch.cos(angles).unsqueeze(dim=-1)
@@ -95,11 +112,12 @@ class RoPE(torch.nn.Module):
 
 
 class MLLAttention(nn.Module):
-    r""" Linear Attention with LePE and RoPE.
+    r"""Linear Attention with LePE and RoPE.
+
     Args:
         dim (int): Number of input channels.
         num_heads (int): Number of attention heads.
-        qkv_bias (bool, optional):  If True, add a learnable bias to query, key, value. Default: True
+        qkv_bias (bool, optional): If True, add a learnable bias to query, key, value. Default: True.
     """
 
     def __init__(self, dim=3, input_resolution=[160, 160], num_heads=4, qkv_bias=True, **kwargs):
@@ -115,12 +133,12 @@ class MLLAttention(nn.Module):
     def forward(self, x):
         """
         Args:
-            x: input features with shape of (B, N, C)
+            x: input features with shape of (B, N, C).
         """
         x = x.reshape((x.size(0), x.size(2) * x.size(3), x.size(1)))
         b, n, c = x.shape
-        h = int(n ** 0.5)
-        w = int(n ** 0.5)
+        h = int(n**0.5)
+        w = int(n**0.5)
         # self.rope = RoPE(shape=(h, w, self.dim))
         num_heads = self.num_heads
         head_dim = c // num_heads
@@ -138,7 +156,7 @@ class MLLAttention(nn.Module):
         v = v.reshape(b, n, num_heads, head_dim).permute(0, 2, 1, 3)
 
         z = 1 / (q @ k.mean(dim=-2, keepdim=True).transpose(-2, -1) + 1e-6)
-        kv = (k_rope.transpose(-2, -1) * (n ** -0.5)) @ (v * (n ** -0.5))
+        kv = (k_rope.transpose(-2, -1) * (n**-0.5)) @ (v * (n**-0.5))
         x = q_rope @ kv * z
 
         x = x.transpose(1, 2).reshape(b, n, c)
@@ -148,7 +166,7 @@ class MLLAttention(nn.Module):
         return x
 
     def extra_repr(self) -> str:
-        return f'dim={self.dim}, num_heads={self.num_heads}'
+        return f"dim={self.dim}, num_heads={self.num_heads}"
 
 
 def autopad(k, p=None, d=1):  # kernel, padding, dilation
@@ -182,18 +200,20 @@ class Conv(nn.Module):
 
 
 class PSABlock(nn.Module):
-    """
-    PSABlock class implementing a Position-Sensitive Attention block for neural networks.
-    This class encapsulates the functionality for applying multi-head attention and feed-forward neural network layers
-    with optional shortcut connections.
+    """PSABlock class implementing a Position-Sensitive Attention block for neural networks. This class encapsulates the
+    functionality for applying multi-head attention and feed-forward neural network layers with optional
+    shortcut connections.
+
     Attributes:
         attn (Attention): Multi-head attention module.
         ffn (nn.Sequential): Feed-forward neural network module.
         add (bool): Flag indicating whether to add shortcut connections.
+
     Methods:
         forward: Performs a forward pass through the PSABlock, applying attention and feed-forward layers.
+
     Examples:
-        Create a PSABlock and perform a forward pass
+        Create a PSABlock and perform a forward pass.
     """
 
     def __init__(self, c, attn_ratio=0.5, num_heads=4, shortcut=True) -> None:
@@ -212,17 +232,19 @@ class PSABlock(nn.Module):
 
 
 class C2PSAMLLA(nn.Module):
-    """
-    C2PSA module with attention mechanism for enhanced feature extraction and processing.
-    This module implements a convolutional block with attention mechanisms to enhance feature extraction and processing
-    capabilities. It includes a series of PSABlock modules for self-attention and feed-forward operations.
+    """C2PSA module with attention mechanism for enhanced feature extraction and processing. This module implements a
+    convolutional block with attention mechanisms to enhance feature extraction and processing capabilities. It
+    includes a series of PSABlock modules for self-attention and feed-forward operations.
+
     Attributes:
         c (int): Number of hidden channels.
         cv1 (Conv): 1x1 convolution layer to reduce the number of input channels to 2*c.
         cv2 (Conv): 1x1 convolution layer to reduce the number of output channels to c.
         m (nn.Sequential): Sequential container of PSABlock modules for attention and feed-forward operations.
+
     Methods:
         forward: Performs a forward pass through the C2PSA module, applying attention and feed-forward operations.
+
     Notes:
         This module essentially is the same as PSA module, but refactored to allow stacking more PSABlock modules.
     """
