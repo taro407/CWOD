@@ -1,21 +1,18 @@
-from random import weibullvariate
 import torch
 import torch.nn as nn
 
 
 class AFF(nn.Module):
-    """
-    Implimenting AFF module
-    """
+    """Implementing AFF module."""
 
     def __init__(self, channels=64, r=4):
-        super(AFF, self).__init__()
+        super().__init__()
         inter_channels = int(channels // r)
 
         self.local_att = nn.Sequential(
             nn.Conv2d(channels, inter_channels, kernel_size=1, stride=1, padding=0),
             nn.BatchNorm2d(inter_channels),
-            #	nn.ReLU(inplace=True),
+            # nn.ReLU(inplace=True),
             nn.SiLU(),
             nn.Conv2d(inter_channels, channels, kernel_size=1, stride=1, padding=0),
             nn.BatchNorm2d(channels),
@@ -25,7 +22,7 @@ class AFF(nn.Module):
             nn.AdaptiveAvgPool2d(1),
             nn.Conv2d(channels, inter_channels, kernel_size=1, stride=1, padding=0),
             nn.BatchNorm2d(inter_channels),
-            #	nn.ReLU(inplace=True),
+            # nn.ReLU(inplace=True),
             nn.SiLU(),
             nn.Conv2d(inter_channels, channels, kernel_size=1, stride=1, padding=0),
             nn.BatchNorm2d(channels),
@@ -48,18 +45,16 @@ class AFF(nn.Module):
 
 
 class iAFF(nn.Module):
-    """
-    implimenting iAFF module
-    """
+    """Implementing iAFF module."""
 
     def __init__(self, channels=64, r=4):
-        super(iAFF, self).__init__()
+        super().__init__()
         inter_channels = int(channels // r)
 
         self.local_attention1 = nn.Sequential(
             nn.Conv2d(channels, inter_channels, kernel_size=1, stride=1, padding=0),
             nn.BatchNorm2d(inter_channels),
-            #	nn.ReLU(inplace=True),
+            # nn.ReLU(inplace=True),
             nn.SiLU(),
             nn.Conv2d(inter_channels, channels, kernel_size=1, stride=1, padding=0),
             nn.BatchNorm2d(channels),
@@ -68,7 +63,7 @@ class iAFF(nn.Module):
             nn.AdaptiveAvgPool2d(1),
             nn.Conv2d(channels, inter_channels, kernel_size=1, stride=1, padding=0),
             nn.BatchNorm2d(inter_channels),
-            #	nn.ReLU(inplace=True),
+            # nn.ReLU(inplace=True),
             nn.SiLU(),
             nn.Conv2d(inter_channels, channels, kernel_size=1, stride=1, padding=0),
             nn.BatchNorm2d(channels),
@@ -77,7 +72,7 @@ class iAFF(nn.Module):
         self.local_attention2 = nn.Sequential(
             nn.Conv2d(channels, inter_channels, kernel_size=1, stride=1, padding=0),
             nn.BatchNorm2d(inter_channels),
-            #	nn.ReLU(inplace=True),
+            # nn.ReLU(inplace=True),
             nn.SiLU(),
             nn.Conv2d(inter_channels, channels, kernel_size=1, stride=1, padding=0),
             nn.BatchNorm2d(channels),
@@ -86,7 +81,7 @@ class iAFF(nn.Module):
             nn.AdaptiveAvgPool2d(1),
             nn.Conv2d(channels, inter_channels, kernel_size=1, stride=1, padding=0),
             nn.BatchNorm2d(inter_channels),
-            #	nn.ReLU(inplace=True),
+            # nn.ReLU(inplace=True),
             nn.SiLU(),
             nn.Conv2d(inter_channels, channels, kernel_size=1, stride=1, padding=0),
             nn.BatchNorm2d(channels),
@@ -95,10 +90,7 @@ class iAFF(nn.Module):
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, input):
-        """
-        Implimenting the iAFF forward step
-        """
-
+        """Implementing the iAFF forward step."""
         x = input[0]
         y = input[1]
         xa = x + y
@@ -116,9 +108,7 @@ class iAFF(nn.Module):
         return z
 
 
-if __name__ == '__main__':
-    import os
-
+if __name__ == "__main__":
     x = torch.randn(8, 64, 32, 32)
     y = torch.randn(8, 64, 32, 32)
     channels = x.shape[1]

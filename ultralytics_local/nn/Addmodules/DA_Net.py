@@ -1,14 +1,13 @@
 ######################################## DA_Net IEEE Access 2024   by AI Little monster start  ########################################
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.nn.init import _calculate_fan_in_and_fan_out
-from timm.models.layers import trunc_normal_
 import math
 
-# https://blog.csdn.net/m0_63774211?type=lately
-from ultralytics_local.nn.modules.block import Bottleneck, C2f, C3k, C3k2
+import torch
+import torch.nn as nn
+from timm.models.layers import trunc_normal_
+from torch.nn.init import _calculate_fan_in_and_fan_out
 
+# https://blog.csdn.net/m0_63774211?type=lately
+from ultralytics_local.nn.modules.block import C3k, C3k2
 
 # This is the official code of DA-Net for haze removal in remote sensing images (RSI).
 # DA-Net: Dual Attention Network for Haze Removal in Remote Sensing Image
@@ -16,14 +15,15 @@ from ultralytics_local.nn.modules.block import Bottleneck, C2f, C3k, C3k2
 # 09/12/2024
 # Namwon Kim (namwon@korea.ac.kr)
 
+
 class ChannelBranch(nn.Module):
     # Channel Branch
     def __init__(self, in_channels, reduction_ratio=16):
-        super(ChannelBranch, self).__init__()
+        super().__init__()
         self.fc = nn.Sequential(
             nn.Linear(in_channels, in_channels // reduction_ratio),
             nn.GELU(),
-            nn.Linear(in_channels // reduction_ratio, in_channels)
+            nn.Linear(in_channels // reduction_ratio, in_channels),
         )
         self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
 
@@ -37,10 +37,9 @@ class ChannelBranch(nn.Module):
 class SpatialBranch(nn.Module):
     # Spatial Branch
     def __init__(self, in_channels):
-        super(SpatialBranch, self).__init__()
+        super().__init__()
         self.spatial = nn.Sequential(
-            nn.Conv2d(in_channels, 1, kernel_size=7, padding=3, padding_mode='reflect'),
-            nn.Sigmoid()
+            nn.Conv2d(in_channels, 1, kernel_size=7, padding=3, padding_mode="reflect"), nn.Sigmoid()
         )
 
     def forward(self, x):
@@ -51,7 +50,7 @@ class SpatialBranch(nn.Module):
 # Channel Spatial Attention Module
 class ChannelSpatialAttentionModule(nn.Module):
     def __init__(self, in_channels):
-        super(ChannelSpatialAttentionModule, self).__init__()
+        super().__init__()
         self.channel_attention = ChannelBranch(in_channels)
         self.spatial_attention = SpatialBranch(in_channels)
 
@@ -62,19 +61,18 @@ class ChannelSpatialAttentionModule(nn.Module):
 
 class LocalChannelAttention(nn.Module):
     def __init__(self, dim):
-        super(LocalChannelAttention, self).__init__()
+        super().__init__()
 
-        self.conv = nn.Conv1d(1, 1, kernel_size=3, padding=1, padding_mode='reflect')
+        self.conv = nn.Conv1d(1, 1, kernel_size=3, padding=1, padding_mode="reflect")
 
         self.GAP = nn.AdaptiveAvgPool2d(1)
 
         self.local = nn.Sequential(
-            nn.Conv2d(dim, dim, kernel_size=3, padding=1, groups=dim, padding_mode='reflect'),
-            nn.Sigmoid()
+            nn.Conv2d(dim, dim, kernel_size=3, padding=1, groups=dim, padding_mode="reflect"), nn.Sigmoid()
         )
 
     def forward(self, x):
-        N, C, H, W = x.shape
+        N, C, _H, _W = x.shape
         att = self.GAP(x).reshape(N, 1, C)
         att = self.conv(att).sigmoid()
         att = att.reshape(N, C, 1, 1)
@@ -91,9 +89,7 @@ class Mlp(nn.Module):
         self.network_depth = network_depth
 
         self.mlp = nn.Sequential(
-            nn.Conv2d(in_features, hidden_features, 1),
-            nn.Mish(True),
-            nn.Conv2d(hidden_features, out_features, 1)
+            nn.Conv2d(in_features, hidden_features, 1), nn.Mish(True), nn.Conv2d(hidden_features, out_features, 1)
         )
 
         self.apply(self._init_weights)
@@ -122,7 +118,7 @@ class DualAttentionBlock(nn.Module):
 
         # shallow feature extraction layer
         self.conv1 = nn.Conv2d(dim, dim, kernel_size=1)  # main
-        self.conv2 = nn.Conv2d(dim, dim, kernel_size=5, padding=2, groups=dim, padding_mode='reflect')  # main
+        self.conv2 = nn.Conv2d(dim, dim, kernel_size=5, padding=2, groups=dim, padding_mode="reflect")  # main
 
         self.attn = ChannelSpatialAttentionModule(dim)
 
@@ -135,8 +131,8 @@ class DualAttentionBlock(nn.Module):
         # Spatial Attention
         self.pam = SpatialAttention(dim)
 
-        self.mlp = Mlp(network_depth, dim, hidden_features=int(dim * 4.), out_features=dim)
-        self.mlp2 = Mlp(network_depth, dim * 3, hidden_features=int(dim * 4.), out_features=dim)
+        self.mlp = Mlp(network_depth, dim, hidden_features=int(dim * 4.0), out_features=dim)
+        self.mlp2 = Mlp(network_depth, dim * 3, hidden_features=int(dim * 4.0), out_features=dim)
 
     def forward(self, x):
         # Channel Spatial Attention Module
@@ -161,13 +157,13 @@ class DualAttentionBlock(nn.Module):
 # Global Channel Attention
 class GlobalChannelAttention(nn.Module):
     def __init__(self, dim, bias=True):
-        super(GlobalChannelAttention, self).__init__()
+        super().__init__()
         self.ca = nn.Sequential(
             nn.AdaptiveAvgPool2d(1),
             nn.Conv2d(dim, dim, 1, padding=0, bias=True),
             nn.GELU(),
             nn.Conv2d(dim, dim, 1, padding=0, bias=True),
-            nn.Sigmoid()
+            nn.Sigmoid(),
         )
 
     def forward(self, x):
@@ -177,11 +173,8 @@ class GlobalChannelAttention(nn.Module):
 # Spatial Attention
 class SpatialAttention(nn.Module):
     def __init__(self, dim, bias=True):
-        super(SpatialAttention, self).__init__()
-        self.spatial = nn.Sequential(
-            nn.Conv2d(dim, 1, kernel_size=7, padding=3),
-            nn.Sigmoid()
-        )
+        super().__init__()
+        self.spatial = nn.Sequential(nn.Conv2d(dim, 1, kernel_size=7, padding=3), nn.Sigmoid())
 
     def forward(self, x):
         return self.spatial(x) * x
@@ -194,8 +187,7 @@ class BasicLayer(nn.Module):
         self.depth = depth
 
         # build blocks
-        self.blocks = nn.ModuleList(
-            [DualAttentionBlock(dim=dim, network_depth=network_depth) for i in range(depth)])
+        self.blocks = nn.ModuleList([DualAttentionBlock(dim=dim, network_depth=network_depth) for i in range(depth)])
 
     def forward(self, x):
         for blk in self.blocks:
@@ -214,6 +206,8 @@ class C3k2_DAB(C3k2):
     def __init__(self, c1, c2, n=1, c3k=False, e=0.5, g=1, shortcut=True):
         super().__init__(c1, c2, n, c3k, e, g, shortcut)
         self.m = nn.ModuleList(
-            C3k_DAB(self.c, self.c, 2, shortcut, g) if c3k else DualAttentionBlock(self.c) for _ in range(n))
+            C3k_DAB(self.c, self.c, 2, shortcut, g) if c3k else DualAttentionBlock(self.c) for _ in range(n)
+        )
+
 
 ######################################## DA_Net IEEE Access 2024   by AI Little monster end  ########################################

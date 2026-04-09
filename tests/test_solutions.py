@@ -9,11 +9,11 @@ from unittest.mock import patch
 import cv2
 import numpy as np
 import pytest
-
-from tests import MODEL, TMP
 from ultralytics import solutions
 from ultralytics.utils import ASSETS_URL, IS_RASPBERRYPI, checks
 from ultralytics.utils.downloads import safe_download
+
+from tests import MODEL, TMP
 
 # Pre-defined arguments values
 SHOW = False
