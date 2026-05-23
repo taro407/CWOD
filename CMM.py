@@ -7,11 +7,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from ultralytics_local import YOLO
-from ultralytics_local.models.yolo.detect.train import DetectionTrainer
+from ultralytics_local.data import build_dataloader, build_yolo_dataset
 from ultralytics_local.data.utils import check_det_dataset
-from ultralytics_local.data import build_yolo_dataset, build_dataloader
+from ultralytics_local.models.yolo.detect.train import DetectionTrainer
 
 
 def seed_everything(seed=9527):
@@ -154,14 +153,7 @@ def combine_aux_fruit_mask(aux_mask, fruit_mask, fruit_weight=1.0, bg_weight=0.1
 
 class CustomTrainer(DetectionTrainer):
     def __init__(
-        self,
-        target_domain_data_cfg,
-        hook_cmm=(16, 19),
-        alpha_cmm=0.1,
-        fruit_weight=1.0,
-        bg_weight=0.1,
-        *args,
-        **kwargs
+        self, target_domain_data_cfg, hook_cmm=(16, 19), alpha_cmm=0.1, fruit_weight=1.0, bg_weight=0.1, *args, **kwargs
     ):
         super().__init__(*args, **kwargs)
 
