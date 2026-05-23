@@ -128,9 +128,7 @@ class BSD(nn.Module):
 
 def autopad(k, p=None, d=1):
     if d > 1:
-        k = d * (k - 1) + 1 if isinstance(k, int) else [
-            d * (x - 1) + 1 for x in k
-        ]
+        k = d * (k - 1) + 1 if isinstance(k, int) else [d * (x - 1) + 1 for x in k]
 
     if p is None:
         p = k // 2 if isinstance(k, int) else [x // 2 for x in k]
@@ -155,13 +153,7 @@ class Conv(nn.Module):
             bias=False,
         )
         self.bn = nn.BatchNorm2d(c2)
-        self.act = (
-            self.default_act
-            if act is True
-            else act
-            if isinstance(act, nn.Module)
-            else nn.Identity()
-        )
+        self.act = self.default_act if act is True else act if isinstance(act, nn.Module) else nn.Identity()
 
     def forward(self, x):
         return self.act(self.bn(self.conv(x)))
@@ -231,6 +223,4 @@ class C3k2_BSD(C2f):
     ):
         super().__init__(c1, c2, n, shortcut, g, e)
 
-        self.m = nn.ModuleList(
-            BSD(self.c, self.c) for _ in range(n)
-        )
+        self.m = nn.ModuleList(BSD(self.c, self.c) for _ in range(n))
