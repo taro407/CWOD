@@ -30,35 +30,11 @@ FSC and CMM are only used during training for cross-domain adaptation. Inference
 
 ## Results
 
-### Main cross-weather results
-
 | Target domain | Baseline (YOLO11) AP@50 | CWOD AP@50 | Gain |
 | --- | ---: | ---: | ---: |
 | Rainy | 71.5 | 78.6 | +7.1 |
 | Foggy | 79.3 | 84.0 | +4.7 |
 | Dark | 71.0 | 78.1 | +7.1 |
-
-CWOD also achieves the following F1-scores on the three target domains:
-
-- Rainy: `75.6`
-- Foggy: `79.8`
-- Dark: `75.5`
-
-### Ablation summary
-
-The ablation study in the paper shows a progressive improvement from the YOLO11 baseline to the full CWOD model:
-
-- `YOLO11`: AP@50 = `71.5 / 79.3 / 71.0` on rainy, foggy, and dark domains
-- `+ C3k2-BSD`: improves representation under rain and fog, but is unstable under dark conditions
-- `+ FSC`: strongly improves cross-domain consistency, especially on the dark target domain
-- `+ CMM`: further boosts domain-aware response calibration across all target domains
-- `+ WIoU v3`: slightly improves stability, with a trade-off on high-precision localization in some scenarios
-
-### Additional validation in the paper
-
-- Dark apple dataset: AP@50 = `81.2`
-- Rainy green apricot dataset: AP@50 = `76.1`
-- Jetson Nano deployment: CWOD maintains a compact model size and near real-time FPS under both FP16 and INT8 settings
 
 ## Installation
 
