@@ -7,6 +7,7 @@ CWOD 是一个基于 YOLO11 的跨天气无监督目标检测框架，面向梨�
 ## 当前仓库包含
 
 - `BSD.yaml`：包含 `C3k2_BSD` 模块的模型配置
+- `CWOD.py`：融合版 FSC + CMM 训练脚本
 - `CMM.py`：条件调制机制训练脚本
 - `FSC.py`：特征空间校正训练脚本
 - `ultralytics/`：本地研究代码实现
@@ -28,8 +29,7 @@ pip install -e .
 ## 训练入口
 
 ```bash
-python FSC.py --model-cfg BSD.yaml --source-data path/to/source.yaml --target-data path/to/target.yaml
-python CMM.py --model-cfg BSD.yaml --source-data path/to/source.yaml --target-data path/to/target.yaml
+python CWOD.py --model-cfg BSD.yaml --source-data path/to/source.yaml --target-data path/to/target.yaml
 ```
 
 完整英文说明请参考 [README.md](README.md)。

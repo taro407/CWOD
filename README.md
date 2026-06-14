@@ -14,6 +14,7 @@ CWOD is an unsupervised cross-weather pear detection framework built on top of Y
 ## Repository Contents
 
 - [BSD.yaml](BSD.yaml): YOLO11 model configuration with the proposed `C3k2_BSD` blocks.
+- [CWOD.py](CWOD.py): fused FSC + CMM training script.
 - [CMM.py](CMM.py): training entry for the conditional modulation mechanism.
 - [FSC.py](FSC.py): training entry for feature space correction.
 - [ultralytics](ultralytics): local research codebase derived from Ultralytics YOLO and extended for CWOD.
@@ -66,40 +67,16 @@ Each YAML should follow the standard Ultralytics detection dataset format. The s
 
 ## Training
 
-### 1. Train with FSC
+### Train CWOD
 
 ```bash
-python FSC.py \
+python CWOD.py \
   --model-cfg BSD.yaml \
   --source-data path/to/source.yaml \
-  --target-data path/to/target.yaml \
-  --name cwod-fsc \
-  --imgsz 640 \
-  --epochs 150 \
-  --batch 32
+  --target-data path/to/target.yaml
 ```
 
-### 2. Train with CMM
-
-```bash
-python CMM.py \
-  --model-cfg BSD.yaml \
-  --source-data path/to/source.yaml \
-  --target-data path/to/target.yaml \
-  --name cwod-cmm \
-  --imgsz 640 \
-  --epochs 150 \
-  --batch 64
-```
-
-Key script arguments:
-
-- `--model-cfg`: model definition YAML, e.g. `BSD.yaml`
-- `--source-data`: labeled source-domain dataset YAML
-- `--target-data`: unlabeled target-domain dataset YAML
-- `--imgsz`: input resolution
-- `--epochs`: number of training epochs
-- `--batch`: batch size
+The script accepts the same YOLO-style source and target dataset YAML files used by the standalone module trainers.
 
 ## Release Status
 
