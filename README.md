@@ -15,8 +15,6 @@ CWOD is an unsupervised cross-weather pear detection framework built on top of Y
 
 - [BSD.yaml](BSD.yaml): YOLO11 model configuration with the proposed `C3k2_BSD` blocks.
 - [CWOD.py](CWOD.py): fused FSC + CMM training script.
-- [CMM.py](CMM.py): training entry for the conditional modulation mechanism.
-- [FSC.py](FSC.py): training entry for feature space correction.
 - [ultralytics](ultralytics): local research codebase derived from Ultralytics YOLO and extended for CWOD.
 
 ## Method Overview
@@ -51,7 +49,7 @@ The codebase follows the local `ultralytics` package in this repository, so runn
 
 ## Data Preparation
 
-Both training scripts expect YOLO-format dataset YAML files for:
+The training script expects YOLO-format dataset YAML files for:
 
 - the labeled **source** domain
 - the unlabeled **target** domain
@@ -76,33 +74,6 @@ python CWOD.py \
   --target-data path/to/target.yaml
 ```
 
-The script accepts the same YOLO-style source and target dataset YAML files used by the standalone module trainers.
-
-## Release Status
-
-This repository is an initial code release for the paper.
-
-- Included: core model code, custom modules, and training scripts
-- Not included: the GUI demo used for software registration
-- Not included in this release: pear dataset files and pretrained weights
-
-If you plan to release datasets or checkpoints later, this README can be extended with direct download links and a model zoo section.
-
 ## Acknowledgment
 
 This work is built on top of [Ultralytics YOLO](https://github.com/ultralytics/ultralytics). We thank the original authors for open-sourcing their codebase.
-
-## Citation
-
-If you find this repository useful, please cite the paper:
-
-```bibtex
-@misc{cwod2026,
-  title        = {A Framework for Unsupervised Cross-Weather Object Detection of Pears in Complex Environments},
-  year         = {2026},
-  howpublished = {\url{https://github.com/taro407/CWOD}},
-  note         = {Code release}
-}
-```
-
-You may also want to cite the upstream Ultralytics YOLO project if you build on that codebase. Please replace the entry above with your final bibliography information after the paper is formally published.
