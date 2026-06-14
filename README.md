@@ -28,19 +28,9 @@ CWOD combines one detector-side architectural change and two training-time domai
 
 FSC and CMM are only used during training for cross-domain adaptation. Inference keeps the original YOLO-style forward path.
 
-## Dataset Setting
+## Dataset Availability
 
-The paper uses a pear detection dataset collected in Dangshan County, Anhui Province, China, during July-August 2025.
-
-- Total clear-weather images: `2050`
-- Source-domain labeled training images: `1280`
-- Base images used for target-domain generation: `770`
-- Target-domain unlabeled training images per setting: `450`
-- Target-domain test images per setting: `320`
-- Weather transfer settings: `clear -> rainy`, `clear -> foggy`, `clear -> dark`
-- Image resolution: `4096 x 2304`
-
-The target domains are constructed by applying weather-specific degradations to clear-weather orchard images while preserving object geometry and annotations.
+The dataset used in the paper is **not included** in this repository and is **not publicly released at this stage**.
 
 ## Results
 
@@ -100,7 +90,7 @@ path/to/source.yaml
 path/to/target.yaml
 ```
 
-Each YAML should follow the standard Ultralytics detection dataset format. The source-domain YAML is used for supervised detection training, while the target-domain YAML provides target-domain images for feature adaptation.
+Each YAML should follow the standard Ultralytics detection dataset format. The source-domain YAML is used for supervised detection training, while the target-domain YAML provides target-domain images for feature adaptation. If you use your own dataset, organize it according to the standard YOLO detection directory structure and prepare the corresponding YAML files.
 
 ## Training
 
