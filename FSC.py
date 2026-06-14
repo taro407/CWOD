@@ -5,10 +5,10 @@ from functools import partial
 
 import numpy as np
 import torch
-from ultralytics_local import YOLO
-from ultralytics_local.data import build_dataloader, build_yolo_dataset
-from ultralytics_local.data.utils import check_det_dataset
-from ultralytics_local.models.yolo.detect.train import DetectionTrainer
+from ultralytics import YOLO
+from ultralytics.data import build_dataloader, build_yolo_dataset
+from ultralytics.data.utils import check_det_dataset
+from ultralytics.models.yolo.detect.train import DetectionTrainer
 
 
 def seed_everything(seed=9527):

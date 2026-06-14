@@ -8,10 +8,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from ultralytics_local import YOLO
-from ultralytics_local.models.yolo.detect.train import DetectionTrainer
-from ultralytics_local.data.utils import check_det_dataset
-from ultralytics_local.data import build_yolo_dataset, build_dataloader
+from ultralytics import YOLO
+from ultralytics.models.yolo.detect.train import DetectionTrainer
+from ultralytics.data.utils import check_det_dataset
+from ultralytics.data import build_yolo_dataset, build_dataloader
 
 
 def seed_everything(seed=9527):

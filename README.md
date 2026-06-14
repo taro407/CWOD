@@ -1,1 +1,169 @@
+# CWOD
 
+Official code for the paper **"A Framework for Unsupervised Cross-Weather Object Detection of Pears in Complex Environments"**.
+
+CWOD is an unsupervised cross-weather pear detection framework built on top of YOLO11. It targets the practical problem that a detector trained on clear-weather orchard images degrades substantially when deployed in rainy, foggy, or dark environments.
+
+## Highlights
+
+- A **C3k2-BSD** backbone module improves local structure modeling under occlusion, scale variation, and cluttered orchard backgrounds.
+- **FSC** performs channel-wise feature space correction to reduce domain shift between the clear-weather source domain and the adverse-weather target domain.
+- **CMM** modulates spatial responses according to target-domain degradation cues to improve robustness under rain, fog, and low-light conditions.
+- The method improves **AP by 7.1, 4.7, and 7.1 points** over the YOLO11 baseline on the rainy, foggy, and dark target domains, respectively.
+
+## Repository Contents
+
+- [BSD.yaml](BSD.yaml): YOLO11 model configuration with the proposed `C3k2_BSD` blocks.
+- [CMM.py](CMM.py): training entry for the conditional modulation mechanism.
+- [FSC.py](FSC.py): training entry for feature space correction.
+- [ultralytics](ultralytics): local research codebase derived from Ultralytics YOLO and extended for CWOD.
+
+## Method Overview
+
+CWOD combines one detector-side architectural change and two training-time domain adaptation modules:
+
+1. **C3k2-BSD** replaces the original C3k blocks in YOLO11 with a dual-branch structure that mixes local channel interaction and neighborhood spatial modeling.
+2. **FSC** aligns source and target features by correcting channel-wise statistical shifts with an exponential moving average of target-domain responses.
+3. **CMM** builds a degradation-aware modulation mask from target-domain responses and injects it into intermediate feature maps during training.
+
+FSC and CMM are only used during training for cross-domain adaptation. Inference keeps the original YOLO-style forward path.
+
+## Dataset Setting
+
+The paper uses a pear detection dataset collected in Dangshan County, Anhui Province, China, during July-August 2025.
+
+- Total clear-weather images: `2050`
+- Source-domain labeled training images: `1280`
+- Base images used for target-domain generation: `770`
+- Target-domain unlabeled training images per setting: `450`
+- Target-domain test images per setting: `320`
+- Weather transfer settings: `clear -> rainy`, `clear -> foggy`, `clear -> dark`
+- Image resolution: `4096 x 2304`
+
+The target domains are constructed by applying weather-specific degradations to clear-weather orchard images while preserving object geometry and annotations.
+
+## Results
+
+### Main cross-weather results
+
+| Target domain | Baseline (YOLO11) AP@50 | CWOD AP@50 | Gain |
+| --- | ---: | ---: | ---: |
+| Rainy | 71.5 | 78.6 | +7.1 |
+| Foggy | 79.3 | 84.0 | +4.7 |
+| Dark | 71.0 | 78.1 | +7.1 |
+
+CWOD also achieves the following F1-scores on the three target domains:
+
+- Rainy: `75.6`
+- Foggy: `79.8`
+- Dark: `75.5`
+
+### Ablation summary
+
+The ablation study in the paper shows a progressive improvement from the YOLO11 baseline to the full CWOD model:
+
+- `YOLO11`: AP@50 = `71.5 / 79.3 / 71.0` on rainy, foggy, and dark domains
+- `+ C3k2-BSD`: improves representation under rain and fog, but is unstable under dark conditions
+- `+ FSC`: strongly improves cross-domain consistency, especially on the dark target domain
+- `+ CMM`: further boosts domain-aware response calibration across all target domains
+- `+ WIoU v3`: slightly improves stability, with a trade-off on high-precision localization in some scenarios
+
+### Additional validation in the paper
+
+- Dark apple dataset: AP@50 = `81.2`
+- Rainy green apricot dataset: AP@50 = `76.1`
+- Jetson Nano deployment: CWOD maintains a compact model size and near real-time FPS under both FP16 and INT8 settings
+
+## Installation
+
+Create a Python environment and install the repository in editable mode:
+
+```bash
+git clone https://github.com/taro407/CWOD.git
+cd CWOD
+pip install -e .
+```
+
+The codebase follows the local `ultralytics` package in this repository, so running scripts from the repository root will use the research version bundled here.
+
+## Data Preparation
+
+Both training scripts expect YOLO-format dataset YAML files for:
+
+- the labeled **source** domain
+- the unlabeled **target** domain
+
+At minimum, prepare:
+
+```text
+path/to/source.yaml
+path/to/target.yaml
+```
+
+Each YAML should follow the standard Ultralytics detection dataset format. The source-domain YAML is used for supervised detection training, while the target-domain YAML provides target-domain images for feature adaptation.
+
+## Training
+
+### 1. Train with FSC
+
+```bash
+python FSC.py \
+  --model-cfg BSD.yaml \
+  --source-data path/to/source.yaml \
+  --target-data path/to/target.yaml \
+  --name cwod-fsc \
+  --imgsz 640 \
+  --epochs 150 \
+  --batch 32
+```
+
+### 2. Train with CMM
+
+```bash
+python CMM.py \
+  --model-cfg BSD.yaml \
+  --source-data path/to/source.yaml \
+  --target-data path/to/target.yaml \
+  --name cwod-cmm \
+  --imgsz 640 \
+  --epochs 150 \
+  --batch 64
+```
+
+Key script arguments:
+
+- `--model-cfg`: model definition YAML, e.g. `BSD.yaml`
+- `--source-data`: labeled source-domain dataset YAML
+- `--target-data`: unlabeled target-domain dataset YAML
+- `--imgsz`: input resolution
+- `--epochs`: number of training epochs
+- `--batch`: batch size
+
+## Release Status
+
+This repository is an initial code release for the paper.
+
+- Included: core model code, custom modules, and training scripts
+- Not included: the GUI demo used for software registration
+- Not included in this release: pear dataset files and pretrained weights
+
+If you plan to release datasets or checkpoints later, this README can be extended with direct download links and a model zoo section.
+
+## Acknowledgment
+
+This work is built on top of [Ultralytics YOLO](https://github.com/ultralytics/ultralytics). We thank the original authors for open-sourcing their codebase.
+
+## Citation
+
+If you find this repository useful, please cite the paper:
+
+```bibtex
+@misc{cwod2026,
+  title        = {A Framework for Unsupervised Cross-Weather Object Detection of Pears in Complex Environments},
+  year         = {2026},
+  howpublished = {\url{https://github.com/taro407/CWOD}},
+  note         = {Code release}
+}
+```
+
+You may also want to cite the upstream Ultralytics YOLO project if you build on that codebase. Please replace the entry above with your final bibliography information after the paper is formally published.
