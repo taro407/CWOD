@@ -28,10 +28,6 @@ CWOD combines one detector-side architectural change and two training-time domai
 
 FSC and CMM are only used during training for cross-domain adaptation. Inference keeps the original YOLO-style forward path.
 
-## Dataset Availability
-
-The dataset used in the paper is **not included** in this repository and is **not publicly released at this stage**.
-
 ## Results
 
 ### Main cross-weather results
